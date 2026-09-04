@@ -7,9 +7,18 @@ import { copyFile } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
-import type { PlantaImportada } from "@croqui/shared";
+import type { PlantaImportada, QuestionarioProjeto, ServiceCategory } from "@croqui/shared";
 import { converterDwgParaDxf } from "./converter.js";
-import { buscarPlanta, carregarPlantas, salvarPlanta } from "./plantas-store.js";
+import { agoraISO } from "./db/index.js";
+import { buscarPlanta, listarPlantasPorProjeto, salvarPlanta } from "./db/plantas.js";
+import { buscarProjeto, criarProjeto, listarProjetos } from "./db/projetos.js";
+import { buscarQuestionario, salvarQuestionario } from "./db/questionarios.js";
+import {
+  buscarCroquiComPontos,
+  criarVersaoCroqui,
+  listarVersoesCroqui,
+  type NovoPonto,
+} from "./db/croquis.js";
 import { ensureDirs, extensaoParaFormato, PROCESSED_DIR, UPLOADS_DIR } from "./storage.js";
 
 const app = Fastify({ logger: true });
@@ -18,15 +27,40 @@ await app.register(cors, { origin: true });
 await app.register(multipart, { limits: { fileSize: 200 * 1024 * 1024 } });
 
 await ensureDirs();
-await carregarPlantas();
 
 app.get("/health", async () => ({ status: "ok" }));
 
-// Fase 1: recebe a planta do cliente (PDF/DXF direto, ou DWG + conversao).
+// ---- Projetos ----
+
+app.post("/projetos", async (request, reply) => {
+  const body = request.body as { nomeCliente?: string } | undefined;
+  const nomeCliente = body?.nomeCliente?.trim();
+  if (!nomeCliente) {
+    return reply.code(400).send({ erro: "Informe o nome do cliente." });
+  }
+  return criarProjeto(nomeCliente);
+});
+
+app.get("/projetos", async () => listarProjetos());
+
+app.get("/projetos/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const projeto = buscarProjeto(id);
+  if (!projeto) return reply.code(404).send({ erro: "Projeto nao encontrado." });
+  return projeto;
+});
+
+// ---- Plantas (Fase 1) ----
+
 app.post("/plantas", async (request, reply) => {
   const arquivo = await request.file();
   if (!arquivo) {
     return reply.code(400).send({ erro: "Nenhum arquivo enviado (campo 'arquivo')." });
+  }
+
+  const projetoId = (arquivo.fields.projetoId as { value?: string } | undefined)?.value;
+  if (!projetoId || !buscarProjeto(projetoId)) {
+    return reply.code(400).send({ erro: "Informe um projetoId valido (campo 'projetoId')." });
   }
 
   const formato = extensaoParaFormato(arquivo.filename);
@@ -40,11 +74,11 @@ app.post("/plantas", async (request, reply) => {
 
   let planta: PlantaImportada = {
     id: plantaId,
-    projetoId: "default", // Fase 2 associa a um projeto/cliente de verdade
+    projetoId,
     formatoOriginal: formato,
     status: "pronta",
     nomeArquivoOriginal: arquivo.filename,
-    criadoEm: new Date().toISOString(),
+    criadoEm: agoraISO(),
   };
 
   if (formato === "dwg") {
@@ -64,7 +98,7 @@ app.post("/plantas", async (request, reply) => {
     planta.formatoExibicao = formato;
   }
 
-  await salvarPlanta(planta);
+  salvarPlanta(planta);
   return planta;
 });
 
@@ -75,7 +109,11 @@ app.get("/plantas/:id", async (request, reply) => {
   return planta;
 });
 
-// Serve o arquivo ja pronto pra visualizacao (pdf ou dxf).
+app.get("/projetos/:id/plantas", async (request) => {
+  const { id } = request.params as { id: string };
+  return listarPlantasPorProjeto(id);
+});
+
 app.get("/plantas/:id/arquivo", async (request, reply) => {
   const { id } = request.params as { id: string };
   const planta = buscarPlanta(id);
@@ -88,6 +126,55 @@ app.get("/plantas/:id/arquivo", async (request, reply) => {
     planta.formatoExibicao === "pdf" ? "application/pdf" : "application/dxf"
   );
   return reply.send(createReadStream(caminho));
+});
+
+// ---- Questionario (Fase 2) ----
+
+app.put("/projetos/:id/questionario", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  if (!buscarProjeto(id)) return reply.code(404).send({ erro: "Projeto nao encontrado." });
+
+  const body = request.body as { servicos?: ServiceCategory[]; observacoes?: string };
+  if (!Array.isArray(body.servicos)) {
+    return reply.code(400).send({ erro: "Informe 'servicos' como lista." });
+  }
+
+  const questionario: QuestionarioProjeto = {
+    projetoId: id,
+    servicos: body.servicos,
+    observacoes: body.observacoes,
+  };
+  return salvarQuestionario(questionario);
+});
+
+app.get("/projetos/:id/questionario", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const questionario = buscarQuestionario(id);
+  if (!questionario) return reply.code(404).send({ erro: "Questionario ainda nao respondido." });
+  return questionario;
+});
+
+// ---- Croquis e versionamento (base pronta pra Fase 4, o editor) ----
+
+app.post("/projetos/:id/croquis", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  if (!buscarProjeto(id)) return reply.code(404).send({ erro: "Projeto nao encontrado." });
+
+  const body = request.body as { pontos?: NovoPonto[]; observacoes?: string };
+  const pontos = body.pontos ?? [];
+  return criarVersaoCroqui(id, pontos, body.observacoes);
+});
+
+app.get("/projetos/:id/croquis", async (request) => {
+  const { id } = request.params as { id: string };
+  return listarVersoesCroqui(id);
+});
+
+app.get("/croquis/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const resultado = buscarCroquiComPontos(id);
+  if (!resultado) return reply.code(404).send({ erro: "Croqui nao encontrado." });
+  return resultado;
 });
 
 const port = Number(process.env.PORT ?? 3333);

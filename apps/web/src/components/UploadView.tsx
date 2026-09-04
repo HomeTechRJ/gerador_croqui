@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
 import type { DragEvent } from "react";
-import type { PlantaImportada } from "@croqui/shared";
+import type { PlantaImportada, Projeto } from "@croqui/shared";
 import { enviarPlanta } from "../api";
 
 interface Props {
+  projeto: Projeto;
   onImportada: (planta: PlantaImportada) => void;
 }
 
-export function UploadView({ onImportada }: Props) {
+export function UploadView({ projeto, onImportada }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
   const [arrastando, setArrastando] = useState(false);
@@ -18,7 +19,7 @@ export function UploadView({ onImportada }: Props) {
     setErro(null);
     setEnviando(true);
     try {
-      const planta = await enviarPlanta(arquivo);
+      const planta = await enviarPlanta(projeto.id, arquivo);
       if (planta.status === "erro_conversao") {
         setErro(planta.mensagemErro ?? "Falha ao converter o arquivo.");
         return;
@@ -40,7 +41,7 @@ export function UploadView({ onImportada }: Props) {
   return (
     <div className="upload-view">
       <header className="upload-header">
-        <p className="eyebrow">Gerador de Croqui</p>
+        <p className="eyebrow">{projeto.nomeCliente}</p>
         <h1>Importe a planta do cliente</h1>
         <p className="subtitulo">Aceita PDF, DXF ou DWG (o DWG é convertido automaticamente).</p>
       </header>

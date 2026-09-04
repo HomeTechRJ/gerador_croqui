@@ -70,6 +70,154 @@
   max-width: 480px;
 }
 
+.upload-view button[type="submit"],
+.upload-view button[type="button"] {
+  font: inherit;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.upload-view button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.upload-view button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---- projeto ---- */
+
+.form-projeto {
+  display: flex;
+  gap: 10px;
+  width: min(480px, 90vw);
+}
+
+.form-projeto input {
+  flex: 1;
+  font: inherit;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.lista-projetos {
+  width: min(480px, 90vw);
+  text-align: left;
+}
+
+.lista-projetos ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item-projeto {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font: inherit;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  cursor: pointer;
+  text-align: left;
+}
+
+.item-projeto:hover {
+  border-color: var(--accent);
+}
+
+.data-projeto {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+/* ---- questionario ---- */
+
+.opcoes-servico {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: min(480px, 90vw);
+}
+
+.opcao-servico {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text-h);
+  user-select: none;
+}
+
+.opcao-servico.marcada {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.observacoes-textarea {
+  width: min(480px, 90vw);
+  font: inherit;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+  resize: vertical;
+}
+
+.preview-simbolos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: min(560px, 90vw);
+}
+
+.chip-simbolo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+.mini-forma {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+}
+
+.mini-forma.circulo {
+  border-radius: 50%;
+}
+
+.mini-forma.retangulo {
+  width: 16px;
+  height: 9px;
+}
+
 /* ---- viewer ---- */
 
 .viewer {

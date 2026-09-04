@@ -86,3 +86,30 @@ export interface Projeto {
   criadoEm: string;
   atualizadoEm: string;
 }
+
+/**
+ * Uma versao salva do croqui de um projeto. Cada vez que o usuario salva o
+ * arranjo de simbolos, gravamos uma versao nova (nao sobrescreve) - e assim
+ * que o "controle de versao" funciona: da pra comparar/voltar pra versao
+ * anterior depois.
+ */
+export interface Croqui {
+  id: string;
+  projetoId: string;
+  versao: number;
+  observacoes?: string;
+  criadoEm: string;
+}
+
+/** Um simbolo posicionado sobre uma planta, dentro de uma versao do croqui. */
+export interface CroquiPonto {
+  id: string;
+  croquiId: string;
+  plantaId?: string;
+  /** Referencia o id de um item de SIMBOLOS_PADRAO. */
+  simboloId: string;
+  ambiente?: string;
+  posX: number;
+  posY: number;
+  criadoEm: string;
+}

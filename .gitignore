@@ -9,3 +9,5 @@ uploads/
 processed/
 converted/
 plantas.json
+data/
+*.db

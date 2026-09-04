@@ -100,7 +100,7 @@ export function PlantaViewer({ planta, onVoltar }: Props) {
     <div className="viewer">
       <header className="viewer-toolbar">
         <button type="button" onClick={onVoltar}>
-          ← Nova planta
+          ← Projetos
         </button>
         <span className="nome-arquivo">{planta.nomeArquivoOriginal}</span>
         <button type="button" onClick={() => setTransform({ escala: 1, x: 0, y: 0 })}>
