@@ -1,4 +1,12 @@
-import type { PlantaImportada, Projeto, QuestionarioProjeto, ServiceCategory } from "@croqui/shared";
+import type {
+  Croqui,
+  CroquiPonto,
+  NovoCroquiPonto,
+  PlantaImportada,
+  Projeto,
+  QuestionarioProjeto,
+  ServiceCategory,
+} from "@croqui/shared";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
 
@@ -53,4 +61,35 @@ export async function salvarQuestionario(
     body: JSON.stringify({ servicos, observacoes: observacoes || undefined }),
   });
   return tratarResposta(res, "Falha ao salvar o questionário.");
+}
+
+export async function buscarQuestionario(projetoId: string): Promise<QuestionarioProjeto | null> {
+  const res = await fetch(`${API_URL}/projetos/${projetoId}/questionario`);
+  if (res.status === 404) return null;
+  return tratarResposta(res, "Falha ao buscar o questionário.");
+}
+
+export async function listarVersoesCroqui(projetoId: string): Promise<Croqui[]> {
+  const res = await fetch(`${API_URL}/projetos/${projetoId}/croquis`);
+  return tratarResposta(res, "Falha ao listar as versões do croqui.");
+}
+
+export async function buscarCroqui(
+  croquiId: string
+): Promise<{ croqui: Croqui; pontos: CroquiPonto[] }> {
+  const res = await fetch(`${API_URL}/croquis/${croquiId}`);
+  return tratarResposta(res, "Falha ao carregar a versão do croqui.");
+}
+
+export async function salvarVersaoCroqui(
+  projetoId: string,
+  pontos: NovoCroquiPonto[],
+  observacoes?: string
+): Promise<Croqui> {
+  const res = await fetch(`${API_URL}/projetos/${projetoId}/croquis`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pontos, observacoes }),
+  });
+  return tratarResposta(res, "Falha ao salvar a versão do croqui.");
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Croqui, CroquiPonto } from "@croqui/shared";
+import type { Croqui, CroquiPonto, NovoCroquiPonto } from "@croqui/shared";
 import { agoraISO, db } from "./index.js";
 
 function linhaParaCroqui(l: Record<string, unknown>): Croqui {
@@ -25,14 +25,6 @@ function linhaParaPonto(l: Record<string, unknown>): CroquiPonto {
   };
 }
 
-export interface NovoPonto {
-  plantaId?: string;
-  simboloId: string;
-  ambiente?: string;
-  posX: number;
-  posY: number;
-}
-
 /**
  * Cria uma nova versao do croqui do projeto (nunca sobrescreve uma versao
  * existente) com o conjunto de pontos dado. E assim que o versionamento
@@ -40,7 +32,7 @@ export interface NovoPonto {
  */
 export function criarVersaoCroqui(
   projetoId: string,
-  pontos: NovoPonto[],
+  pontos: NovoCroquiPonto[],
   observacoes?: string
 ): Croqui {
   const ultima = db

@@ -3,14 +3,14 @@ import type { PlantaImportada, Projeto } from "@croqui/shared";
 import { ProjetoView } from "./components/ProjetoView";
 import { UploadView } from "./components/UploadView";
 import { QuestionarioView } from "./components/QuestionarioView";
-import { PlantaViewer } from "./components/PlantaViewer";
+import { EditorView } from "./components/EditorView";
 import "./App.css";
 
 type Etapa =
   | { nome: "projeto" }
   | { nome: "upload"; projeto: Projeto }
   | { nome: "questionario"; projeto: Projeto; planta: PlantaImportada }
-  | { nome: "viewer"; projeto: Projeto; planta: PlantaImportada };
+  | { nome: "editor"; projeto: Projeto; planta: PlantaImportada };
 
 export default function App() {
   const [etapa, setEtapa] = useState<Etapa>({ nome: "projeto" });
@@ -31,11 +31,17 @@ export default function App() {
       return (
         <QuestionarioView
           projeto={etapa.projeto}
-          onConcluido={() => setEtapa({ nome: "viewer", projeto: etapa.projeto, planta: etapa.planta })}
+          onConcluido={() => setEtapa({ nome: "editor", projeto: etapa.projeto, planta: etapa.planta })}
         />
       );
 
-    case "viewer":
-      return <PlantaViewer planta={etapa.planta} onVoltar={() => setEtapa({ nome: "projeto" })} />;
+    case "editor":
+      return (
+        <EditorView
+          projeto={etapa.projeto}
+          plantaInicial={etapa.planta}
+          onVoltar={() => setEtapa({ nome: "projeto" })}
+        />
+      );
   }
 }

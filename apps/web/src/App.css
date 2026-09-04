@@ -275,12 +275,6 @@
   cursor: grabbing;
 }
 
-.canvas-planta {
-  background: white;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-  transform-origin: center center;
-}
-
 .status-render,
 .aviso {
   position: absolute;
@@ -296,4 +290,158 @@
   margin: auto;
   max-width: 420px;
   text-align: center;
+}
+
+.aviso-inline {
+  padding: 8px 20px;
+  color: var(--text);
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---- editor (Fase 3/4) ---- */
+
+.editor-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.editor-sidebar {
+  width: 240px;
+  flex: none;
+  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid var(--border);
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.palette-grupo-titulo {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.palette-itens {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.palette-item:hover {
+  border-color: var(--border);
+}
+
+.palette-item.ativo {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.palette-vazia {
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.select-versao {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.planta-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.planta-tab {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.planta-tab.ativa {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+.planta-tab-add {
+  color: var(--accent);
+}
+
+.canvas-stage {
+  position: relative;
+  transform-origin: center center;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.canvas-planta-base {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: white;
+}
+
+.pontos-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ponto-marcador {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ponto-marcador.circulo {
+  border-radius: 50%;
+}
+
+.ponto-marcador.retangulo {
+  width: 30px;
+  height: 16px;
 }

@@ -7,18 +7,18 @@ import { copyFile } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
-import type { PlantaImportada, QuestionarioProjeto, ServiceCategory } from "@croqui/shared";
+import type {
+  NovoCroquiPonto,
+  PlantaImportada,
+  QuestionarioProjeto,
+  ServiceCategory,
+} from "@croqui/shared";
 import { converterDwgParaDxf } from "./converter.js";
 import { agoraISO } from "./db/index.js";
 import { buscarPlanta, listarPlantasPorProjeto, salvarPlanta } from "./db/plantas.js";
 import { buscarProjeto, criarProjeto, listarProjetos } from "./db/projetos.js";
 import { buscarQuestionario, salvarQuestionario } from "./db/questionarios.js";
-import {
-  buscarCroquiComPontos,
-  criarVersaoCroqui,
-  listarVersoesCroqui,
-  type NovoPonto,
-} from "./db/croquis.js";
+import { buscarCroquiComPontos, criarVersaoCroqui, listarVersoesCroqui } from "./db/croquis.js";
 import { ensureDirs, extensaoParaFormato, PROCESSED_DIR, UPLOADS_DIR } from "./storage.js";
 
 const app = Fastify({ logger: true });
@@ -160,7 +160,7 @@ app.post("/projetos/:id/croquis", async (request, reply) => {
   const { id } = request.params as { id: string };
   if (!buscarProjeto(id)) return reply.code(404).send({ erro: "Projeto nao encontrado." });
 
-  const body = request.body as { pontos?: NovoPonto[]; observacoes?: string };
+  const body = request.body as { pontos?: NovoCroquiPonto[]; observacoes?: string };
   const pontos = body.pontos ?? [];
   return criarVersaoCroqui(id, pontos, body.observacoes);
 });

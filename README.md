@@ -11,8 +11,8 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | 0 | Esqueleto do monorepo | ✅ |
 | 1 | Upload da planta (PDF/DXF/DWG), conversão DWG→DXF, visualização com pan/zoom | ✅ (DXF ainda só converte, visualização vem na 1.1) |
 | 2 | Fluxo projeto → questionário (som? rede? automação?) → banco com versionamento | ✅ |
-| 3 | Biblioteca de símbolos/legenda | — |
-| 4 | Editor manual (arrastar, mover, girar, duplicar símbolos) — popula `croquis`/`croqui_pontos` | — |
+| 3 | Paleta de símbolos filtrada pelo questionário | ✅ |
+| 4 | Editor: clicar pra colocar símbolo, clicar nele pra remover, múltiplas plantas, salvar versão | ✅ (mover/girar um símbolo já colocado fica pra 4.1) |
 | 5 | Exportar croqui final (PDF/PNG) | — |
 
 Decisões já tomadas:
@@ -51,8 +51,10 @@ PDF e DXF funcionam sem nenhuma configuração extra.
 
 ## Stack
 
-- **Front-end**: React + TypeScript + Vite, `react-konva` para o canvas
-  interativo (Fase 4), `pdf.js` para renderizar PDF.
+- **Front-end**: React + TypeScript + Vite. `pdf.js` renderiza o PDF num
+  `<canvas>`; os símbolos posicionados são overlay em DOM (`<button>`
+  posicionado por `left`/`top`) por cima do canvas, não desenhados dentro
+  dele — mais simples de clicar/remover, sem depender de lib de canvas.
 - **Back-end**: Node + TypeScript + Fastify.
 - **Banco de dados**: SQLite via `node:sqlite` (nativo do Node, sem dependência
   extra) — arquivo em `apps/api/data/croqui.db`, criado automaticamente no
@@ -67,6 +69,13 @@ PDF e DXF funcionam sem nenhuma configuração extra.
   histórico completo de como o croqui evoluiu.
 - `croqui_pontos`: os símbolos posicionados dentro de uma versão específica.
 
-A API já expõe esse fluxo hoje (`POST /projetos/:id/croquis` cria uma versão,
-`GET /projetos/:id/croquis` lista o histórico) — falta só o editor visual
-(Fase 4) pra gerar esses pontos a partir de cliques na planta.
+O editor (Fase 4) já usa esse fluxo: clicar na planta com um símbolo
+selecionado na paleta cria um ponto local; "Salvar versão" grava tudo de uma
+vez via `POST /projetos/:id/croquis`. O seletor de versão no topo troca qual
+versão está carregada pra edição (sempre gera uma versão nova ao salvar,
+nunca sobrescreve a antiga).
+
+Fica pra depois (não bloqueia o uso, mas vale registrar):
+- Mover/girar um símbolo já colocado (hoje só dá pra colocar e remover).
+- Campo "ambiente" por ponto (a coluna já existe no banco, só falta o campo no editor).
+- Visualizar DXF no editor (por enquanto só PDF é editável).

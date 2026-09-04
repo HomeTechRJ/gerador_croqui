@@ -113,3 +113,12 @@ export interface CroquiPonto {
   posY: number;
   criadoEm: string;
 }
+
+/** Payload de entrada pra criar um ponto ao salvar uma nova versao do croqui. */
+export interface NovoCroquiPonto {
+  plantaId?: string;
+  simboloId: string;
+  ambiente?: string;
+  posX: number;
+  posY: number;
+}
