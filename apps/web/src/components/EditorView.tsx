@@ -29,6 +29,7 @@ interface PontoLocal {
   simboloId: string;
   posX: number;
   posY: number;
+  rotacao: number;
 }
 
 const ESCALA_MIN = 0.2;
@@ -41,6 +42,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   const [questionario, setQuestionario] = useState<QuestionarioProjeto | null>(null);
   const [simboloAtivo, setSimboloAtivo] = useState<SymbolDefinition | null>(null);
   const [pontos, setPontos] = useState<PontoLocal[]>([]);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [versoes, setVersoes] = useState<Croqui[]>([]);
   const [versaoCarregada, setVersaoCarregada] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -58,6 +60,10 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
 
   const arraste = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const cliqueCandidato = useRef(false);
+  const arrastePonto = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(
+    null
+  );
+  const rotacionandoId = useRef<string | null>(null);
 
   const plantaAtiva = plantas.find((p) => p.id === plantaAtivaId) ?? plantaInicial;
 
@@ -78,6 +84,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
             simboloId: p.simboloId,
             posX: p.posX,
             posY: p.posY,
+            rotacao: p.rotacao,
           }))
         );
         setVersaoCarregada(ultima.croqui.versao);
@@ -139,12 +146,14 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     return () => el.removeEventListener("wheel", handleWheel);
   }, []);
 
+  // ---- pan da planta + colocar ponto novo (clique em area vazia) ----
+
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    // Se o clique comecou em cima de um marcador, deixa o onClick dele cuidar
-    // da remocao - nao inicia arraste/captura, senao o pointerup perde a
-    // referencia ao elemento original (setPointerCapture redireciona os
-    // eventos seguintes pro wrapper) e o clique "vaza" pra criar um ponto novo.
-    if ((e.target as HTMLElement).closest(".ponto-marcador")) {
+    // Clique dentro de um ponto (forma, alca de girar ou botao de excluir) e
+    // tratado pelos handlers do proprio ponto - nao inicia arraste da planta,
+    // senao o pointerup perde a referencia ao elemento original
+    // (setPointerCapture redireciona os eventos seguintes pro wrapper).
+    if ((e.target as HTMLElement).closest(".ponto-item")) {
       cliqueCandidato.current = false;
       return;
     }
@@ -168,9 +177,9 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     const foiClique = cliqueCandidato.current;
     cliqueCandidato.current = false;
     if (!foiClique) return;
+    if ((e.target as HTMLElement).closest(".ponto-item")) return;
 
-    const alvoMarcador = (e.target as HTMLElement).closest(".ponto-marcador");
-    if (alvoMarcador) return; // o proprio marcador cuida da remocao
+    setSelecionadoId(null);
 
     if (!simboloAtivo) {
       setMensagem("Selecione um símbolo na paleta antes de clicar na planta.");
@@ -184,14 +193,60 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
 
     setPontos((atual) => [
       ...atual,
-      { id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId: simboloAtivo.id, posX, posY },
+      { id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId: simboloAtivo.id, posX, posY, rotacao: 0 },
     ]);
     setMensagem(null);
   }
 
   function removerPonto(id: string) {
     setPontos((atual) => atual.filter((p) => p.id !== id));
+    setSelecionadoId((atual) => (atual === id ? null : atual));
   }
+
+  // ---- mover um ponto ja colocado (arrastar a propria forma) ----
+
+  function handleMarcadorPointerDown(e: PointerEvent<HTMLDivElement>, ponto: PontoLocal) {
+    e.stopPropagation();
+    setSelecionadoId(ponto.id);
+    arrastePonto.current = { id: ponto.id, startX: e.clientX, startY: e.clientY, origX: ponto.posX, origY: ponto.posY };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleMarcadorPointerMove(e: PointerEvent<HTMLDivElement>) {
+    if (!arrastePonto.current) return;
+    const { id, startX, startY, origX, origY } = arrastePonto.current;
+    const dx = (e.clientX - startX) / transform.escala;
+    const dy = (e.clientY - startY) / transform.escala;
+    setPontos((atual) => atual.map((p) => (p.id === id ? { ...p, posX: origX + dx, posY: origY + dy } : p)));
+  }
+
+  function handleMarcadorPointerUp() {
+    arrastePonto.current = null;
+  }
+
+  // ---- girar um ponto (arrastar a alca de rotacao) ----
+
+  function handleRotacaoPointerDown(e: PointerEvent<HTMLDivElement>, ponto: PontoLocal) {
+    e.stopPropagation();
+    rotacionandoId.current = ponto.id;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function handleRotacaoPointerMove(e: PointerEvent<HTMLDivElement>, ponto: PontoLocal) {
+    if (rotacionandoId.current !== ponto.id || !stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    const centroX = rect.left + (ponto.posX / tamanhoCanvas.largura) * rect.width;
+    const centroY = rect.top + (ponto.posY / tamanhoCanvas.altura) * rect.height;
+    const anguloTela = Math.atan2(e.clientY - centroY, e.clientX - centroX) * (180 / Math.PI);
+    const rotacao = ((anguloTela + 90) % 360 + 360) % 360;
+    setPontos((atual) => atual.map((p) => (p.id === ponto.id ? { ...p, rotacao } : p)));
+  }
+
+  function handleRotacaoPointerUp() {
+    rotacionandoId.current = null;
+  }
+
+  // ---- salvar/carregar versoes ----
 
   async function handleSalvarVersao() {
     setSalvando(true);
@@ -203,6 +258,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         simboloId: p.simboloId,
         posX: p.posX,
         posY: p.posY,
+        rotacao: p.rotacao,
       }));
       const novaVersao = await salvarVersaoCroqui(projeto.id, payload);
       setVersoes((atual) => [novaVersao, ...atual]);
@@ -226,8 +282,10 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         simboloId: p.simboloId,
         posX: p.posX,
         posY: p.posY,
+        rotacao: p.rotacao,
       }))
     );
+    setSelecionadoId(null);
     setVersaoCarregada(resultado.croqui.versao);
     setMensagem(`Carregada a versão ${resultado.croqui.versao} (edite e salve pra criar uma nova).`);
   }
@@ -286,31 +344,23 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         </button>
       </header>
 
-      {plantas.length > 1 && (
-        <div className="planta-tabs">
-          {plantas.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`planta-tab${p.id === plantaAtivaId ? " ativa" : ""}`}
-              onClick={() => setPlantaAtivaId(p.id)}
-            >
-              {p.nomeArquivoOriginal}
-            </button>
-          ))}
-          <button type="button" className="planta-tab planta-tab-add" onClick={() => inputPlantaRef.current?.click()}>
-            + Planta
-          </button>
-        </div>
-      )}
-      {plantas.length === 1 && (
-        <div className="planta-tabs">
-          <span className="planta-tab ativa">{plantaAtiva.nomeArquivoOriginal}</span>
-          <button type="button" className="planta-tab planta-tab-add" onClick={() => inputPlantaRef.current?.click()}>
-            + Planta
-          </button>
-        </div>
-      )}
+      <div className="planta-tabs">
+        {plantas.length > 1
+          ? plantas.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`planta-tab${p.id === plantaAtivaId ? " ativa" : ""}`}
+                onClick={() => setPlantaAtivaId(p.id)}
+              >
+                {p.nomeArquivoOriginal}
+              </button>
+            ))
+          : <span className="planta-tab ativa">{plantaAtiva.nomeArquivoOriginal}</span>}
+        <button type="button" className="planta-tab planta-tab-add" onClick={() => inputPlantaRef.current?.click()}>
+          + Planta
+        </button>
+      </div>
       <input
         ref={inputPlantaRef}
         type="file"
@@ -330,8 +380,14 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
           <SymbolPalette
             servicosPermitidos={questionario?.servicos ?? []}
             simboloAtivoId={simboloAtivo?.id ?? null}
-            onSelecionar={setSimboloAtivo}
+            onSelecionar={(s) => {
+              setSimboloAtivo(s);
+              setSelecionadoId(null);
+            }}
           />
+          {selecionadoId && (
+            <p className="dica-editor">Arraste o símbolo selecionado pra mover, ou a bolinha acima dele pra girar.</p>
+          )}
         </aside>
 
         {plantaAtiva.formatoExibicao === "dxf" ? (
@@ -367,15 +423,39 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
                 {pontosDaPlantaAtiva.map((p) => {
                   const simbolo = simbolosPorId.get(p.simboloId);
                   if (!simbolo) return null;
+                  const selecionado = p.id === selecionadoId;
                   return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={`ponto-marcador ${simbolo.forma}`}
-                      style={{ left: p.posX, top: p.posY, background: simbolo.cor }}
-                      title={`${simbolo.nome} — clique pra remover`}
-                      onClick={() => removerPonto(p.id)}
-                    />
+                    <div key={p.id} className="ponto-item" style={{ left: p.posX, top: p.posY }}>
+                      <div className="ponto-forma-wrap" style={{ transform: `rotate(${p.rotacao}deg)` }}>
+                        <div
+                          className={`ponto-marcador ${simbolo.forma}${selecionado ? " selecionado" : ""}`}
+                          style={{ background: simbolo.cor }}
+                          title={simbolo.nome}
+                          onPointerDown={(e) => handleMarcadorPointerDown(e, p)}
+                          onPointerMove={handleMarcadorPointerMove}
+                          onPointerUp={handleMarcadorPointerUp}
+                        />
+                        {selecionado && (
+                          <div
+                            className="ponto-handle-rotacionar"
+                            title="Arraste pra girar"
+                            onPointerDown={(e) => handleRotacaoPointerDown(e, p)}
+                            onPointerMove={(e) => handleRotacaoPointerMove(e, p)}
+                            onPointerUp={handleRotacaoPointerUp}
+                          />
+                        )}
+                      </div>
+                      {selecionado && (
+                        <button
+                          type="button"
+                          className="ponto-handle-excluir"
+                          title="Remover"
+                          onClick={() => removerPonto(p.id)}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>

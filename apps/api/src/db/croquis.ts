@@ -21,6 +21,7 @@ function linhaParaPonto(l: Record<string, unknown>): CroquiPonto {
     ambiente: (l.ambiente as string | null) ?? undefined,
     posX: l.pos_x as number,
     posY: l.pos_y as number,
+    rotacao: l.rotacao as number,
     criadoEm: l.criado_em as string,
   };
 }
@@ -55,8 +56,8 @@ export function criarVersaoCroqui(
     ).run(croqui.id, croqui.projetoId, croqui.versao, croqui.observacoes ?? null, croqui.criadoEm);
 
     const inserirPonto = db.prepare(
-      `INSERT INTO croqui_pontos (id, croqui_id, planta_id, simbolo_id, ambiente, pos_x, pos_y, criado_em)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO croqui_pontos (id, croqui_id, planta_id, simbolo_id, ambiente, pos_x, pos_y, rotacao, criado_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     for (const p of pontos) {
       inserirPonto.run(
@@ -67,6 +68,7 @@ export function criarVersaoCroqui(
         p.ambiente ?? null,
         p.posX,
         p.posY,
+        p.rotacao ?? 0,
         agoraISO()
       );
     }

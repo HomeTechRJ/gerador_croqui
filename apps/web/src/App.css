@@ -425,16 +425,43 @@
   pointer-events: none;
 }
 
+/* .ponto-item e uma "âncora" de tamanho zero no ponto exato (posX, posY);
+   os filhos se centralizam/deslocam a partir dela via transform. */
+.ponto-item {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Carrega so a rotacao, pivotada no proprio (0,0) = a ancora. */
+.ponto-forma-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
 .ponto-marcador {
   position: absolute;
+  left: 0;
+  top: 0;
   transform: translate(-50%, -50%);
   width: 22px;
   height: 22px;
   border: 2px solid white;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
-  cursor: pointer;
+  cursor: grab;
   padding: 0;
+  touch-action: none;
+}
+
+.ponto-marcador:active {
+  cursor: grabbing;
+}
+
+.ponto-marcador.selecionado {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .ponto-marcador.circulo {
@@ -444,4 +471,51 @@
 .ponto-marcador.retangulo {
   width: 30px;
   height: 16px;
+}
+
+.ponto-handle-rotacionar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transform: translate(-50%, -50%) translateY(-30px);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+
+.ponto-handle-rotacionar:active {
+  cursor: grabbing;
+}
+
+.ponto-handle-excluir {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c0392b;
+  color: white;
+  border: 2px solid white;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translate(6px, -26px);
+}
+
+.dica-editor {
+  margin-top: 16px;
+  font-size: 0.8125rem;
+  color: var(--text);
 }

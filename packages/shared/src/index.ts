@@ -111,6 +111,8 @@ export interface CroquiPonto {
   ambiente?: string;
   posX: number;
   posY: number;
+  /** Graus (0-359). 0 = orientacao padrao do simbolo, sem rotacao. */
+  rotacao: number;
   criadoEm: string;
 }
 
@@ -121,4 +123,6 @@ export interface NovoCroquiPonto {
   ambiente?: string;
   posX: number;
   posY: number;
+  /** Graus (0-359). Omitido = 0 (sem rotacao). */
+  rotacao?: number;
 }

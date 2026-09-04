@@ -12,6 +12,20 @@ export const db = new DatabaseSync(path.join(DATA_DIR, "croqui.db"));
 db.exec("PRAGMA foreign_keys = ON;");
 db.exec(SCHEMA_SQL);
 
+/**
+ * "CREATE TABLE IF NOT EXISTS" nao adiciona coluna nova a uma tabela que ja
+ * existia de um boot anterior - por isso as evolucoes de schema pos-lancamento
+ * entram aqui como ALTER TABLE idempotente, em vez de so editar schema.ts.
+ */
+function ensureColuna(tabela: string, coluna: string, definicaoSql: string): void {
+  const colunas = db.prepare(`PRAGMA table_info(${tabela})`).all() as { name: string }[];
+  if (!colunas.some((c) => c.name === coluna)) {
+    db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${definicaoSql}`);
+  }
+}
+
+ensureColuna("croqui_pontos", "rotacao", "REAL NOT NULL DEFAULT 0");
+
 export function agoraISO(): string {
   return new Date().toISOString();
 }

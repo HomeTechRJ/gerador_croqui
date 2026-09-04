@@ -12,7 +12,7 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | 1 | Upload da planta (PDF/DXF/DWG), conversão DWG→DXF, visualização com pan/zoom | ✅ (DXF ainda só converte, visualização vem na 1.1) |
 | 2 | Fluxo projeto → questionário (som? rede? automação?) → banco com versionamento | ✅ |
 | 3 | Paleta de símbolos filtrada pelo questionário | ✅ |
-| 4 | Editor: clicar pra colocar símbolo, clicar nele pra remover, múltiplas plantas, salvar versão | ✅ (mover/girar um símbolo já colocado fica pra 4.1) |
+| 4 | Editor: colocar, selecionar, mover e girar símbolo, múltiplas plantas, salvar versão | ✅ |
 | 5 | Exportar croqui final (PDF/PNG) | — |
 
 Decisões já tomadas:
@@ -28,7 +28,7 @@ Decisões já tomadas:
 
 ```
 apps/
-  web/      # React + TypeScript + Vite — o editor visual (canvas com react-konva)
+  web/      # React + TypeScript + Vite — o editor visual (pdf.js + overlay em DOM)
   api/      # Node + TypeScript + Fastify — upload, conversão de arquivos, dados do projeto
 packages/
   shared/   # Tipos compartilhados entre web e api (símbolos, questionário, projeto)
@@ -70,12 +70,13 @@ PDF e DXF funcionam sem nenhuma configuração extra.
 - `croqui_pontos`: os símbolos posicionados dentro de uma versão específica.
 
 O editor (Fase 4) já usa esse fluxo: clicar na planta com um símbolo
-selecionado na paleta cria um ponto local; "Salvar versão" grava tudo de uma
-vez via `POST /projetos/:id/croquis`. O seletor de versão no topo troca qual
-versão está carregada pra edição (sempre gera uma versão nova ao salvar,
-nunca sobrescreve a antiga).
+selecionado na paleta cria um ponto local; clicar num ponto já colocado
+seleciona ele (mostra alça de girar e botão de remover); arrastar a forma
+move; arrastar a alça gira (grava em graus, campo `rotacao`). "Salvar versão"
+grava tudo de uma vez via `POST /projetos/:id/croquis`. O seletor de versão no
+topo troca qual versão está carregada pra edição (sempre gera uma versão nova
+ao salvar, nunca sobrescreve a antiga).
 
 Fica pra depois (não bloqueia o uso, mas vale registrar):
-- Mover/girar um símbolo já colocado (hoje só dá pra colocar e remover).
 - Campo "ambiente" por ponto (a coluna já existe no banco, só falta o campo no editor).
 - Visualizar DXF no editor (por enquanto só PDF é editável).

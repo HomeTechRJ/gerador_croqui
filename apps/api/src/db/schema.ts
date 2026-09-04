@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS croqui_pontos (
   ambiente TEXT,
   pos_x REAL NOT NULL,
   pos_y REAL NOT NULL,
+  rotacao REAL NOT NULL DEFAULT 0,
   criado_em TEXT NOT NULL
 );
 
