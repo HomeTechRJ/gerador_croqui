@@ -7,6 +7,9 @@ interface Props {
   onSelecionar: (simbolo: SymbolDefinition) => void;
 }
 
+/** Mime-type customizado usado no drag-and-drop palette -> planta. */
+export const MIME_SIMBOLO_ID = "application/x-croqui-simbolo-id";
+
 const ROTULO_CATEGORIA: Record<ServiceCategory, string> = {
   audio: "Áudio",
   video: "Vídeo",
@@ -39,8 +42,14 @@ export function SymbolPalette({ servicosPermitidos, simboloAtivoId, onSelecionar
               <button
                 key={simbolo.id}
                 type="button"
+                draggable
                 className={`palette-item${simboloAtivoId === simbolo.id ? " ativo" : ""}`}
                 onClick={() => onSelecionar(simbolo)}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(MIME_SIMBOLO_ID, simbolo.id);
+                  e.dataTransfer.effectAllowed = "copy";
+                  onSelecionar(simbolo);
+                }}
                 title={simbolo.confirmado ? simbolo.nome : `${simbolo.nome} (proposto)`}
               >
                 <span className={`mini-forma ${simbolo.forma}`} style={{ background: simbolo.cor }} />

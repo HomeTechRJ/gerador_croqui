@@ -69,10 +69,12 @@ PDF e DXF funcionam sem nenhuma configuração extra.
   histórico completo de como o croqui evoluiu.
 - `croqui_pontos`: os símbolos posicionados dentro de uma versão específica.
 
-O editor (Fase 4) já usa esse fluxo: clicar na planta com um símbolo
-selecionado na paleta cria um ponto local; clicar num ponto já colocado
-seleciona ele (mostra alça de girar e botão de remover); arrastar a forma
-move; arrastar a alça gira (grava em graus, campo `rotacao`). "Salvar versão"
+O editor (Fase 4) já usa esse fluxo: colocar um símbolo novo funciona de duas
+formas — **arrastar** da paleta até a planta (drag-and-drop nativo do
+navegador), ou clicar nele na paleta e depois clicar na planta. Clicar num
+ponto já colocado seleciona ele (mostra alça de girar e botão de remover);
+arrastar a forma move; arrastar a alça gira (grava em graus, campo
+`rotacao`). "Salvar versão"
 grava tudo de uma vez via `POST /projetos/:id/croquis`. O seletor de versão no
 topo troca qual versão está carregada pra edição (sempre gera uma versão nova
 ao salvar, nunca sobrescreve a antiga).

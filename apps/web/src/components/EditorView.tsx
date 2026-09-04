@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent } from "react";
+import type { DragEvent, PointerEvent } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 import type { Croqui, PlantaImportada, Projeto, QuestionarioProjeto, SymbolDefinition } from "@croqui/shared";
@@ -13,7 +13,7 @@ import {
   salvarVersaoCroqui,
   urlArquivoPlanta,
 } from "../api";
-import { SymbolPalette } from "./SymbolPalette";
+import { MIME_SIMBOLO_ID, SymbolPalette } from "./SymbolPalette";
 import {
   baixarCanvasComoPng,
   baixarCanvasesComoPdf,
@@ -189,20 +189,39 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     setSelecionadoId(null);
 
     if (!simboloAtivo) {
-      setMensagem("Selecione um símbolo na paleta antes de clicar na planta.");
+      setMensagem("Selecione um símbolo na paleta (ou arraste ele até aqui) antes de clicar na planta.");
       return;
     }
-    if (!stageRef.current) return;
+    adicionarPonto(simboloAtivo.id, e.clientX, e.clientY);
+  }
 
+  /** Converte um clique/drop em coordenadas de tela pra coordenadas do canvas e cria o ponto. */
+  function adicionarPonto(simboloId: string, clienteX: number, clienteY: number) {
+    if (!stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
-    const posX = ((e.clientX - rect.left) / rect.width) * tamanhoCanvas.largura;
-    const posY = ((e.clientY - rect.top) / rect.height) * tamanhoCanvas.altura;
+    const posX = ((clienteX - rect.left) / rect.width) * tamanhoCanvas.largura;
+    const posY = ((clienteY - rect.top) / rect.height) * tamanhoCanvas.altura;
 
     setPontos((atual) => [
       ...atual,
-      { id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId: simboloAtivo.id, posX, posY, rotacao: 0 },
+      { id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId, posX, posY, rotacao: 0 },
     ]);
     setMensagem(null);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+    if (e.dataTransfer.types.includes(MIME_SIMBOLO_ID)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    const simboloId = e.dataTransfer.getData(MIME_SIMBOLO_ID);
+    if (!simboloId) return;
+    e.preventDefault();
+    setSelecionadoId(null);
+    adicionarPonto(simboloId, e.clientX, e.clientY);
   }
 
   function removerPonto(id: string) {
@@ -438,6 +457,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
 
       <div className="editor-body">
         <aside className="editor-sidebar">
+          <p className="dica-editor">Arraste um símbolo até a planta, ou clique nele e depois clique na planta.</p>
           <SymbolPalette
             servicosPermitidos={questionario?.servicos ?? []}
             simboloAtivoId={simboloAtivo?.id ?? null}
@@ -467,6 +487,8 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
               arraste.current = null;
               cliqueCandidato.current = false;
             }}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
           >
             {carregandoPdf && <p className="status-render">Carregando planta…</p>}
             <div
