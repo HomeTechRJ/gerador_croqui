@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@croqui/shared": "*",
+    "@fastify/cors": "^10.0.1",
+    "@fastify/multipart": "^9.0.1",
     "fastify": "^5.1.0"
   },
   "devDependencies": {

@@ -6,4 +6,6 @@ build/
 *.log
 .DS_Store
 uploads/
+processed/
 converted/
+plantas.json

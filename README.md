@@ -9,8 +9,8 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | Fase | Entregável | Status |
 |---|---|---|
 | 0 | Esqueleto do monorepo | ✅ |
-| 1 | Upload da planta (PDF/DXF/DWG), conversão DWG→DXF, visualização com pan/zoom | 🔜 |
-| 2 | Questionário dinâmico (som? rede? automação? Unifi? etc.) | — |
+| 1 | Upload da planta (PDF/DXF/DWG), conversão DWG→DXF, visualização com pan/zoom | ✅ (DXF ainda só converte, visualização vem na 1.1) |
+| 2 | Questionário dinâmico (som? rede? automação? Unifi? etc.) | 🔜 |
 | 3 | Biblioteca de símbolos/legenda | — |
 | 4 | Editor manual (arrastar, mover, girar, duplicar símbolos) | — |
 | 5 | Exportar croqui final (PDF/PNG) + versionamento de projeto | — |
@@ -38,6 +38,12 @@ npm install
 npm run dev:api   # http://localhost:3333  (GET /health)
 npm run dev:web   # http://localhost:5173
 ```
+
+Pra converter DWG, copie `apps/api/.env.example` para `apps/api/.env` e aponte
+`ODA_CONVERTER_PATH` para o executável do
+[ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
+instalado na máquina. Sem isso, um upload de DWG retorna erro explicando o que falta —
+PDF e DXF funcionam sem nenhuma configuração extra.
 
 ## Stack
 
