@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@croqui/shared": "*",
+    "jspdf": "^4.2.1",
     "pdfjs-dist": "^4.10.38",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

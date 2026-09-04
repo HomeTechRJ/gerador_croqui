@@ -14,6 +14,12 @@ import {
   urlArquivoPlanta,
 } from "../api";
 import { SymbolPalette } from "./SymbolPalette";
+import {
+  baixarCanvasComoPng,
+  baixarCanvasesComoPdf,
+  renderizarPaginaCroqui,
+  slugArquivo,
+} from "../lib/exportarCroqui";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
@@ -46,6 +52,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   const [versoes, setVersoes] = useState<Croqui[]>([]);
   const [versaoCarregada, setVersaoCarregada] = useState<number | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [exportando, setExportando] = useState<"png" | "pdf" | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -271,6 +278,54 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     }
   }
 
+  // ---- exportar (Fase 5) ----
+
+  async function handleExportarPng() {
+    if (plantaAtiva.formatoExibicao !== "pdf") {
+      setErro("Só dá pra exportar plantas em PDF por enquanto.");
+      return;
+    }
+    setExportando("png");
+    setErro(null);
+    setMensagem(null);
+    try {
+      const canvas = await renderizarPaginaCroqui(plantaAtiva, pontosDaPlantaAtiva, simbolosPorId);
+      const nomePlanta = slugArquivo(plantaAtiva.nomeArquivoOriginal.replace(/\.[^.]+$/, ""));
+      baixarCanvasComoPng(canvas, `croqui-${slugArquivo(projeto.nomeCliente)}-${nomePlanta}.png`);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Falha ao exportar PNG.");
+    } finally {
+      setExportando(null);
+    }
+  }
+
+  async function handleExportarPdf() {
+    const plantasExportaveis = plantas.filter((p) => p.formatoExibicao === "pdf");
+    if (plantasExportaveis.length === 0) {
+      setErro("Nenhuma planta em PDF disponível pra exportar.");
+      return;
+    }
+    setExportando("pdf");
+    setErro(null);
+    setMensagem(null);
+    try {
+      const canvases = await Promise.all(
+        plantasExportaveis.map((p) =>
+          renderizarPaginaCroqui(
+            p,
+            pontos.filter((pt) => pt.plantaId === p.id),
+            simbolosPorId
+          )
+        )
+      );
+      await baixarCanvasesComoPdf(canvases, `croqui-${slugArquivo(projeto.nomeCliente)}.pdf`);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Falha ao exportar PDF.");
+    } finally {
+      setExportando(null);
+    }
+  }
+
   async function handleCarregarVersao(versaoId: string) {
     const alvo = versoes.find((v) => v.id === versaoId);
     if (!alvo) return;
@@ -341,6 +396,12 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
 
         <button type="button" onClick={handleSalvarVersao} disabled={salvando}>
           {salvando ? "Salvando…" : "Salvar versão"}
+        </button>
+        <button type="button" onClick={handleExportarPng} disabled={exportando !== null}>
+          {exportando === "png" ? "Gerando…" : "Exportar PNG"}
+        </button>
+        <button type="button" onClick={handleExportarPdf} disabled={exportando !== null}>
+          {exportando === "pdf" ? "Gerando…" : "Exportar PDF"}
         </button>
       </header>
 

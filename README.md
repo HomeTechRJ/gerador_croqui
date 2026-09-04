@@ -13,7 +13,7 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | 2 | Fluxo projeto → questionário (som? rede? automação?) → banco com versionamento | ✅ |
 | 3 | Paleta de símbolos filtrada pelo questionário | ✅ |
 | 4 | Editor: colocar, selecionar, mover e girar símbolo, múltiplas plantas, salvar versão | ✅ |
-| 5 | Exportar croqui final (PDF/PNG) | — |
+| 5 | Exportar croqui final (PDF/PNG) com legenda automática | ✅ |
 
 Decisões já tomadas:
 - **DWG**: convertido para DXF via [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
@@ -79,4 +79,14 @@ ao salvar, nunca sobrescreve a antiga).
 
 Fica pra depois (não bloqueia o uso, mas vale registrar):
 - Campo "ambiente" por ponto (a coluna já existe no banco, só falta o campo no editor).
-- Visualizar DXF no editor (por enquanto só PDF é editável).
+- Visualizar/exportar DXF (por enquanto só plantas em PDF são editáveis e exportáveis).
+
+## Exportação (Fase 5)
+
+"Exportar PNG" gera a planta ativa com os símbolos + legenda (só os símbolos
+realmente usados nela); "Exportar PDF" gera um PDF com uma página por planta
+do projeto (útil quando tem mais de um pavimento), cada página com sua
+própria legenda. Tudo desenhado num `<canvas>` novo (não a tela do editor) via
+Canvas 2D, então o resultado fica limpo mesmo com zoom/pan aplicados na hora
+de editar. O jsPDF só é carregado quando "Exportar PDF" é clicado (import
+dinâmico) pra não pesar o carregamento inicial do app.
