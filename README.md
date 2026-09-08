@@ -14,6 +14,8 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | 3 | Paleta de símbolos filtrada pelo questionário | ✅ |
 | 4 | Editor: colocar, selecionar, mover e girar símbolo, múltiplas plantas, salvar versão | ✅ |
 | 5 | Exportar croqui final (PDF/PNG) com legenda automática | ✅ |
+| 6 | Detecção automática de ambientes (lê o texto do PDF) + campo "ambiente" | ✅ (validado com PDF sintético; falta confirmar com planta real) |
+| 6.1 | Motor de regras (sugerir equipamento sozinho por tipo/metragem de ambiente) | 🔜 — depende de capturar o critério de vocês |
 
 Decisões já tomadas:
 - **DWG**: convertido para DXF via [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
@@ -86,8 +88,33 @@ topo troca qual versão está carregada pra edição (sempre gera uma versão no
 ao salvar, nunca sobrescreve a antiga).
 
 Fica pra depois (não bloqueia o uso, mas vale registrar):
-- Campo "ambiente" por ponto (a coluna já existe no banco, só falta o campo no editor).
 - Visualizar/exportar DXF (por enquanto só plantas em PDF são editáveis e exportáveis).
+- Motor de regras pra sugerir equipamento sozinho (Fase 6.1) — depende do
+  critério de posicionamento de vocês, que ainda não está formalizado.
+
+## Detecção automática de ambientes (Fase 6)
+
+As plantas de referência são PDF **vetorial** (o texto "SUÍTE MASTER A:14.31m²"
+já é texto de verdade dentro do arquivo, não desenho/imagem escaneada). O app
+lê esse texto com `pdf.js` (`getTextContent()`), casa cada rótulo de área
+("A:14.31m²") com o nome mais próximo, e assim descobre os ambientes e
+metragens **sem nenhuma IA e sem o usuário digitar nada** — ver
+[`lib/detectarAmbientes.ts`](apps/web/src/lib/detectarAmbientes.ts).
+
+Isso alimenta o campo `ambiente` de cada ponto automaticamente: ao plantar um
+símbolo perto de um ambiente detectado, o nome do ambiente é preenchido
+sozinho (aparece no título do marcador e é salvo com a versão). Os ambientes
+detectados aparecem como pontinhos discretos na planta (dá pra esconder pelo
+checkbox "N ambientes detectados" no topo).
+
+**Importante:** testei com um PDF sintético que imita o formato dos rótulos
+reais e funcionou 100%, mas ainda não confirmei com uma planta de verdade de
+vocês — o espaçamento/formatação real pode exigir ajuste fino na distância
+usada pra casar nome + área (`DISTANCIA_MAX_PX` no arquivo acima).
+
+Essa detecção é a base necessária pro **motor de regras** (Fase 6.1): só faz
+sentido sugerir equipamento automaticamente depois que o app sabe onde estão
+os ambientes e qual o tamanho de cada um.
 
 ## Exportação (Fase 5)
 

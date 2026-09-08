@@ -20,6 +20,8 @@ import {
   renderizarPaginaCroqui,
   slugArquivo,
 } from "../lib/exportarCroqui";
+import { ambienteMaisProximo, detectarAmbientes } from "../lib/detectarAmbientes";
+import type { AmbienteDetectado } from "../lib/detectarAmbientes";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
@@ -36,6 +38,7 @@ interface PontoLocal {
   posX: number;
   posY: number;
   rotacao: number;
+  ambiente?: string;
 }
 
 const ESCALA_MIN = 0.2;
@@ -64,6 +67,8 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   const [transform, setTransform] = useState({ escala: 1, x: 0, y: 0 });
   const [tamanhoCanvas, setTamanhoCanvas] = useState({ largura: 0, altura: 0 });
   const [carregandoPdf, setCarregandoPdf] = useState(true);
+  const [ambientesDetectados, setAmbientesDetectados] = useState<AmbienteDetectado[]>([]);
+  const [mostrarAmbientes, setMostrarAmbientes] = useState(true);
 
   const arraste = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const cliqueCandidato = useRef(false);
@@ -92,6 +97,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
             posX: p.posX,
             posY: p.posY,
             rotacao: p.rotacao,
+            ambiente: p.ambiente,
           }))
         );
         setVersaoCarregada(ultima.croqui.versao);
@@ -136,6 +142,22 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
       }
     })();
 
+    return () => {
+      cancelado = true;
+    };
+  }, [plantaAtiva]);
+
+  // Le o texto ja embutido no PDF pra descobrir os ambientes/metragens
+  // sozinho (sem IA, sem o usuario digitar nada) - ver lib/detectarAmbientes.
+  useEffect(() => {
+    if (plantaAtiva.formatoExibicao !== "pdf") {
+      setAmbientesDetectados([]);
+      return;
+    }
+    let cancelado = false;
+    detectarAmbientes(plantaAtiva).then((ambientes) => {
+      if (!cancelado) setAmbientesDetectados(ambientes);
+    });
     return () => {
       cancelado = true;
     };
@@ -201,12 +223,13 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     const rect = stageRef.current.getBoundingClientRect();
     const posX = ((clienteX - rect.left) / rect.width) * tamanhoCanvas.largura;
     const posY = ((clienteY - rect.top) / rect.height) * tamanhoCanvas.altura;
+    const ambiente = ambienteMaisProximo(ambientesDetectados, posX, posY)?.nome;
 
     setPontos((atual) => [
       ...atual,
-      { id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId, posX, posY, rotacao: 0 },
+      { id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId, posX, posY, rotacao: 0, ambiente },
     ]);
-    setMensagem(null);
+    setMensagem(ambiente ? `Colocado em "${ambiente}".` : null);
   }
 
   function handleDragOver(e: DragEvent<HTMLDivElement>) {
@@ -285,6 +308,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         posX: p.posX,
         posY: p.posY,
         rotacao: p.rotacao,
+        ambiente: p.ambiente,
       }));
       const novaVersao = await salvarVersaoCroqui(projeto.id, payload);
       setVersoes((atual) => [novaVersao, ...atual]);
@@ -357,6 +381,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         posX: p.posX,
         posY: p.posY,
         rotacao: p.rotacao,
+        ambiente: p.ambiente,
       }))
     );
     setSelecionadoId(null);
@@ -440,6 +465,16 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         <button type="button" className="planta-tab planta-tab-add" onClick={() => inputPlantaRef.current?.click()}>
           + Planta
         </button>
+        {ambientesDetectados.length > 0 && (
+          <label className="toggle-ambientes">
+            <input
+              type="checkbox"
+              checked={mostrarAmbientes}
+              onChange={(e) => setMostrarAmbientes(e.target.checked)}
+            />
+            {ambientesDetectados.length} ambientes detectados
+          </label>
+        )}
       </div>
       <input
         ref={inputPlantaRef}
@@ -502,6 +537,20 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
               }}
             >
               <canvas ref={canvasRef} className="canvas-planta-base" />
+              {mostrarAmbientes && (
+                <div className="ambientes-layer">
+                  {ambientesDetectados.map((a, i) => (
+                    <div
+                      key={`${a.nome}-${i}`}
+                      className="ambiente-marcador"
+                      style={{ left: a.posX, top: a.posY }}
+                      title={a.areaM2 ? `${a.nome} — ${a.areaM2}m²` : a.nome}
+                    >
+                      <span className="ambiente-rotulo">{a.nome}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="pontos-layer">
                 {pontosDaPlantaAtiva.map((p) => {
                   const simbolo = simbolosPorId.get(p.simboloId);
@@ -513,7 +562,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
                         <div
                           className={`ponto-marcador ${simbolo.forma}${selecionado ? " selecionado" : ""}`}
                           style={{ background: simbolo.cor }}
-                          title={simbolo.nome}
+                          title={p.ambiente ? `${simbolo.nome} — ${p.ambiente}` : simbolo.nome}
                           onPointerDown={(e) => handleMarcadorPointerDown(e, p)}
                           onPointerMove={handleMarcadorPointerMove}
                           onPointerUp={handleMarcadorPointerUp}

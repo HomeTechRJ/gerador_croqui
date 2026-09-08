@@ -406,6 +406,49 @@
   color: var(--accent);
 }
 
+.toggle-ambientes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ambientes-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ambiente-marcador {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.ambiente-rotulo {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--accent);
+  background: var(--bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+  opacity: 0.85;
+}
+
 .canvas-stage {
   position: relative;
   transform-origin: center center;
