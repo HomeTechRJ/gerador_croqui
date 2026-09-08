@@ -23,6 +23,7 @@ import {
 import { ambienteMaisProximo, detectarAmbientes } from "../lib/detectarAmbientes";
 import type { AmbienteDetectado } from "../lib/detectarAmbientes";
 import { sugerirParaAmbiente, sugerirParaAndar } from "../lib/motorDeRegras";
+import { calcularEscalaRenderizacao } from "../lib/pdfRender";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
@@ -125,7 +126,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
       try {
         const documento = await pdfjsLib.getDocument(urlArquivoPlanta(plantaAtiva.id)).promise;
         const pagina = await documento.getPage(1);
-        const viewport = pagina.getViewport({ scale: 2 });
+        const viewport = pagina.getViewport({ scale: calcularEscalaRenderizacao(pagina) });
 
         const canvas = canvasRef.current;
         if (!canvas || cancelado) return;
@@ -171,11 +172,28 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    function handleWheel(e: WheelEvent) {
+    const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const fator = e.deltaY < 0 ? 1.1 : 0.9;
-      setTransform((t) => ({ ...t, escala: Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, t.escala * fator)) }));
-    }
+      const rect = el.getBoundingClientRect();
+      // Ponto sob o cursor, relativo ao centro do wrapper (onde o stage fica
+      // centralizado antes de qualquer translate/scale nosso).
+      const cursorX = e.clientX - (rect.left + rect.width / 2);
+      const cursorY = e.clientY - (rect.top + rect.height / 2);
+
+      setTransform((t) => {
+        const novaEscala = Math.min(ESCALA_MAX, Math.max(ESCALA_MIN, t.escala * fator));
+        const razao = novaEscala / t.escala;
+        // Mantem o ponto sob o cursor fixo na tela - sem isso, cada scroll
+        // reancora no centro do canvas e a planta parece "pular"/deformar
+        // ao dar zoom fora do centro.
+        return {
+          escala: novaEscala,
+          x: cursorX - razao * (cursorX - t.x),
+          y: cursorY - razao * (cursorY - t.y),
+        };
+      });
+    };
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, []);

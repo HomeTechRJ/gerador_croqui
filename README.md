@@ -14,7 +14,7 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | 3 | Paleta de símbolos filtrada pelo questionário | ✅ |
 | 4 | Editor: colocar, selecionar, mover e girar símbolo, múltiplas plantas, salvar versão | ✅ |
 | 5 | Exportar croqui final (PDF/PNG) com legenda automática | ✅ |
-| 6 | Detecção automática de ambientes (lê o texto do PDF) + campo "ambiente" | ✅ (validado com PDF sintético; falta confirmar com planta real) |
+| 6 | Detecção automática de ambientes (lê o texto do PDF) + campo "ambiente" | ✅ |
 | 6.1 | Motor de regras (sugerir equipamento sozinho por tipo/metragem de ambiente) | ✅ — regras da entrevista de 08/09/2026 com o usuário |
 
 Decisões já tomadas:
@@ -114,6 +114,30 @@ símbolo perto de um ambiente detectado, o nome do ambiente é preenchido
 sozinho (aparece no título do marcador e é salvo com a versão). Os ambientes
 detectados aparecem como pontinhos discretos na planta (dá pra esconder pelo
 checkbox "N ambientes detectados" no topo).
+
+**Correção depois do primeiro teste com planta real (08/09/2026):** com um
+PDF sintético simples, o texto mais próximo de "A:12.30m²" era sempre o nome
+do ambiente. Numa planta de verdade tem muito mais texto perto (cotas tipo
+"3,20", "1x0,90", códigos de porta) - às vezes mais perto que o nome real. O
+algoritmo agora exige que o candidato "pareça uma palavra" (≥3 letras
+seguidas) antes de aceitar como nome, o que elimina cotas numéricas. Também
+adicionei um índice espacial (grade de células) em vez de comparar todo
+texto contra todo texto - não era o gargalo real (testei com ~2900 itens e
+levou 4ms), mas é mais seguro pra plantas com dezenas de milhares de textos.
+
+**Tela branca ao interagir (mesmo teste):** a causa provável era outra -
+`pdf.js` renderiza a planta num `<canvas>` numa escala fixa de 2x; se o PDF
+tiver um tamanho de página fora do normal (alguns exportadores de CAD geram
+isso), 2x podia estourar o limite de canvas do navegador e o resultado é uma
+tela em branco, sem nenhum erro no console. Agora a escala é calculada com um
+teto de 4000px no lado maior (`lib/pdfRender.ts`), usado de forma consistente
+no editor, na detecção de ambientes e na exportação - testei com uma página
+de propósito gigante (60000×40000pt) e confirmei que o canvas fica dentro do
+limite (4000×2666) em vez de tentar estourar. Também aproveitei pra corrigir
+o zoom pra ancorar no cursor (antes sempre recentralizava no meio da tela, o
+que podia parecer "pular"/distorcer ao dar zoom fora do centro), e adicionei
+um Error Boundary no React - se algo mesmo assim quebrar, agora aparece uma
+tela explicando em vez de branco puro.
 
 ## Motor de regras / "Sugerir automaticamente" (Fase 6.1)
 

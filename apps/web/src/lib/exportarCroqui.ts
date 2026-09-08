@@ -1,6 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import type { PlantaImportada, SymbolDefinition } from "@croqui/shared";
 import { urlArquivoPlanta } from "../api";
+import { calcularEscalaRenderizacao } from "./pdfRender";
 
 export interface PontoParaExportar {
   simboloId: string;
@@ -93,7 +94,7 @@ export async function renderizarPaginaCroqui(
 ): Promise<HTMLCanvasElement> {
   const documento = await pdfjsLib.getDocument(urlArquivoPlanta(planta.id)).promise;
   const pagina = await documento.getPage(1);
-  const viewport = pagina.getViewport({ scale: 2 });
+  const viewport = pagina.getViewport({ scale: calcularEscalaRenderizacao(pagina) });
 
   const canvas = document.createElement("canvas");
   canvas.width = viewport.width;
