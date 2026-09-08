@@ -15,7 +15,7 @@ equipamentos — som, rede, automação etc.) a partir da planta do cliente
 | 4 | Editor: colocar, selecionar, mover e girar símbolo, múltiplas plantas, salvar versão | ✅ |
 | 5 | Exportar croqui final (PDF/PNG) com legenda automática | ✅ |
 | 6 | Detecção automática de ambientes (lê o texto do PDF) + campo "ambiente" | ✅ (validado com PDF sintético; falta confirmar com planta real) |
-| 6.1 | Motor de regras (sugerir equipamento sozinho por tipo/metragem de ambiente) | 🔜 — depende de capturar o critério de vocês |
+| 6.1 | Motor de regras (sugerir equipamento sozinho por tipo/metragem de ambiente) | ✅ — regras da entrevista de 08/09/2026 com o usuário |
 
 Decisões já tomadas:
 - **DWG**: convertido para DXF via [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
@@ -89,8 +89,8 @@ ao salvar, nunca sobrescreve a antiga).
 
 Fica pra depois (não bloqueia o uso, mas vale registrar):
 - Visualizar/exportar DXF (por enquanto só plantas em PDF são editáveis e exportáveis).
-- Motor de regras pra sugerir equipamento sozinho (Fase 6.1) — depende do
-  critério de posicionamento de vocês, que ainda não está formalizado.
+- Regras que a entrevista não cobriu (áudio em quarto comum sem ser master,
+  critério de distância por pé-direito quando esse dado existir na planta).
 
 ## Detecção automática de ambientes (Fase 6)
 
@@ -106,6 +106,45 @@ símbolo perto de um ambiente detectado, o nome do ambiente é preenchido
 sozinho (aparece no título do marcador e é salvo com a versão). Os ambientes
 detectados aparecem como pontinhos discretos na planta (dá pra esconder pelo
 checkbox "N ambientes detectados" no topo).
+
+## Motor de regras / "Sugerir automaticamente" (Fase 6.1)
+
+Regras capturadas numa entrevista com o usuário em 08/09/2026 (não havia
+documento formal - o critério estava na experiência de quem projeta), em
+[`lib/motorDeRegras.ts`](apps/web/src/lib/motorDeRegras.ts). Casam o **nome**
+do ambiente detectado (regex, ignorando acento/caixa) com o(s) serviço(s)
+contratados no questionário:
+
+| Ambiente (por nome) | Serviço | Gera |
+|---|---|---|
+| Suíte master | Áudio | 2× caixa de embutir |
+| Banheiro master | Áudio | 1× caixa de embutir |
+| Closet | Áudio | 1× caixa de embutir |
+| Home / Cinema / Theater | Áudio | 5× caixa de embutir + 1× subwoofer (5.1) + 1× receiver |
+| Área externa / Piscina / Jardim / Varanda | Áudio | 1× caixa outdoor ⚠️ *(marcado pra revisar - pode ser bookshelf, depende do local)* |
+| Quarto / Suíte (dormitório) | Rede | 2× ponto de rede |
+| Sala / Estar / Home / Cinema | Rede | 3× ponto de rede ⚠️ *(4 se o ambiente também tiver som)* |
+| Sala / Estar | Áudio | 1× multiroom |
+| Gourmet | Rede | 2× ponto de rede |
+| **Por andar** | Rede | 1-2× Unifi AP, por metragem total do andar (~120m² por AP, considerando perda de sinal) ⚠️ |
+| **Por andar** | Automação | 1× quadro de automação ⚠️ *(posição é só um ponto de partida - vocês reposicionam perto do quadro elétrico real)* |
+
+O botão **"✨ Sugerir automaticamente"** no editor roda essas regras contra os
+ambientes detectados na planta ativa e adiciona os pontos sugeridos - cada um
+continua **100% editável**: mover, girar, remover, ajustar quantidade, igual
+a qualquer ponto colocado manualmente. Os marcados com ⚠️ acima ganham um
+contorno tracejado laranja na tela, indicando "revisar antes de fechar" -
+são os casos que o próprio usuário descreveu como dependendo de análise
+(ex: piscina pode levar bookshelf ou caixa externa dependendo do projeto).
+Clicar em "Sugerir" de novo não duplica o que já foi sugerido antes (mas
+não impede colocar mais manualmente).
+
+Testado com um PDF sintético cobrindo os 8 tipos de ambiente da tabela:
+as 28 sugestões geradas bateram exatamente com o esperado, e clicar duas
+vezes não duplicou nada.
+
+**Ainda sem cobertura:** áudio em quarto comum (não-master) - o usuário não
+deu um critério específico pra esse caso, então não inventei um.
 
 **Importante:** testei com um PDF sintético que imita o formato dos rótulos
 reais e funcionou 100%, mas ainda não confirmei com uma planta de verdade de

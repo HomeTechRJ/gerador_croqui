@@ -248,6 +248,12 @@
   border-color: var(--accent);
 }
 
+.botao-sugerir {
+  border-color: var(--accent) !important;
+  background: var(--accent-bg) !important;
+  font-weight: 600;
+}
+
 .nome-arquivo {
   font-family: var(--mono);
   font-size: 0.875rem;
@@ -505,6 +511,11 @@
 .ponto-marcador.selecionado {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.ponto-marcador.precisa-revisar {
+  outline: 2px dashed #c97a2d;
+  outline-offset: 3px;
 }
 
 .ponto-marcador.circulo {

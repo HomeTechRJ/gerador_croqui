@@ -22,6 +22,7 @@ import {
 } from "../lib/exportarCroqui";
 import { ambienteMaisProximo, detectarAmbientes } from "../lib/detectarAmbientes";
 import type { AmbienteDetectado } from "../lib/detectarAmbientes";
+import { sugerirParaAmbiente, sugerirParaAndar } from "../lib/motorDeRegras";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
@@ -39,6 +40,10 @@ interface PontoLocal {
   posY: number;
   rotacao: number;
   ambiente?: string;
+  /** So visual/local - marca sugestao do motor de regras que pede atencao. Nao e salvo. */
+  precisaRevisar?: boolean;
+  /** So visual/local - nota do motor de regras (ex: "nos pés da cama"). Nao e salva. */
+  observacao?: string;
 }
 
 const ESCALA_MIN = 0.2;
@@ -252,6 +257,74 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     setSelecionadoId((atual) => (atual === id ? null : atual));
   }
 
+  // ---- sugestao automatica (Fase 6.1 - motor de regras) ----
+
+  /** Espalha N pontos numa fileira horizontal em torno do centro do ambiente. */
+  function espalharPontos(qtd: number, cx: number, cy: number, espaco = 22): { x: number; y: number }[] {
+    const posicoes: { x: number; y: number }[] = [];
+    for (let i = 0; i < qtd; i++) {
+      const offset = i - (qtd - 1) / 2;
+      posicoes.push({ x: cx + offset * espaco, y: cy });
+    }
+    return posicoes;
+  }
+
+  function handleSugerirAutomaticamente() {
+    if (!questionario || questionario.servicos.length === 0) {
+      setMensagem("Responda o questionário (quais serviços) antes de gerar sugestões.");
+      return;
+    }
+    if (ambientesDetectados.length === 0) {
+      setMensagem("Nenhum ambiente detectado nesta planta ainda - não dá pra sugerir nada.");
+      return;
+    }
+
+    const servicos = questionario.servicos;
+    const sugestoes = [
+      ...ambientesDetectados.flatMap((a) => sugerirParaAmbiente(a, servicos)),
+      ...sugerirParaAndar(ambientesDetectados, servicos),
+    ];
+
+    if (sugestoes.length === 0) {
+      setMensagem("Nenhuma regra bateu com os ambientes/serviços deste projeto.");
+      return;
+    }
+
+    setPontos((atual) => {
+      const jaSugerido = new Set(
+        atual.filter((p) => p.plantaId === plantaAtivaId).map((p) => `${p.ambiente ?? ""}::${p.simboloId}`)
+      );
+      const novos: PontoLocal[] = [];
+      for (const s of sugestoes) {
+        const chave = `${s.ambiente}::${s.simboloId}`;
+        if (jaSugerido.has(chave)) continue; // ja sugerido antes (evita duplicar em cliques repetidos)
+        for (const pos of espalharPontos(s.quantidade, s.posX, s.posY)) {
+          novos.push({
+            id: crypto.randomUUID(),
+            plantaId: plantaAtivaId,
+            simboloId: s.simboloId,
+            posX: pos.x,
+            posY: pos.y,
+            rotacao: 0,
+            ambiente: s.ambiente,
+            precisaRevisar: s.revisar,
+            observacao: s.observacao,
+          });
+        }
+      }
+      return [...atual, ...novos];
+    });
+
+    const totalSimbolos = sugestoes.reduce((soma, s) => soma + s.quantidade, 0);
+    const qtdRevisar = sugestoes.filter((s) => s.revisar).length;
+    setMensagem(
+      `${totalSimbolos} símbolo(s) sugerido(s)` +
+        (qtdRevisar > 0 ? ` — ${qtdRevisar} marcado(s) em laranja pra você revisar.` : ".") +
+        " Ajuste posição/quantidade como quiser."
+    );
+    setErro(null);
+  }
+
   // ---- mover um ponto ja colocado (arrastar a propria forma) ----
 
   function handleMarcadorPointerDown(e: PointerEvent<HTMLDivElement>, ponto: PontoLocal) {
@@ -438,6 +511,9 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
           </select>
         )}
 
+        <button type="button" className="botao-sugerir" onClick={handleSugerirAutomaticamente}>
+          ✨ Sugerir automaticamente
+        </button>
         <button type="button" onClick={handleSalvarVersao} disabled={salvando}>
           {salvando ? "Salvando…" : "Salvar versão"}
         </button>
@@ -556,13 +632,14 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
                   const simbolo = simbolosPorId.get(p.simboloId);
                   if (!simbolo) return null;
                   const selecionado = p.id === selecionadoId;
+                  const titulo = [simbolo.nome, p.ambiente, p.observacao].filter(Boolean).join(" — ");
                   return (
                     <div key={p.id} className="ponto-item" style={{ left: p.posX, top: p.posY }}>
                       <div className="ponto-forma-wrap" style={{ transform: `rotate(${p.rotacao}deg)` }}>
                         <div
-                          className={`ponto-marcador ${simbolo.forma}${selecionado ? " selecionado" : ""}`}
+                          className={`ponto-marcador ${simbolo.forma}${selecionado ? " selecionado" : ""}${p.precisaRevisar ? " precisa-revisar" : ""}`}
                           style={{ background: simbolo.cor }}
-                          title={p.ambiente ? `${simbolo.nome} — ${p.ambiente}` : simbolo.nome}
+                          title={titulo}
                           onPointerDown={(e) => handleMarcadorPointerDown(e, p)}
                           onPointerMove={handleMarcadorPointerMove}
                           onPointerUp={handleMarcadorPointerUp}
