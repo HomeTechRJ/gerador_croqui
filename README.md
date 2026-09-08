@@ -54,8 +54,16 @@ npm run dev:web   # http://localhost:5173
 Pra converter DWG, copie `apps/api/.env.example` para `apps/api/.env` e aponte
 `ODA_CONVERTER_PATH` para o executável do
 [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter)
-instalado na máquina. Sem isso, um upload de DWG retorna erro explicando o que falta —
-PDF e DXF funcionam sem nenhuma configuração extra.
+instalado na máquina (a API carrega o `.env` sozinha via `dotenv`). Sem isso,
+um upload de DWG retorna erro explicando o que falta — PDF e DXF funcionam
+sem nenhuma configuração extra.
+
+**Já instalado e configurado nesta máquina** (08/09/2026): ODA File Converter
+27.1.0, instalação por usuário (não precisou de admin — usei
+`MSIINSTALLPERUSER=1`, já que a instalação padrão "para todos os usuários"
+pede elevação). Testado com um DWG real de verdade (não só PDF sintético):
+converteu certinho pra DXF. Numa máquina nova, seria preciso repetir essa
+instalação.
 
 ## Stack
 
