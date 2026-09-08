@@ -36,6 +36,12 @@ packages/
 
 ## Rodando localmente
 
+**Jeito fácil (Windows):** dá duplo-clique em `iniciar-croqui.bat` — instala as
+dependências na primeira vez, sobe os dois servidores em janelas separadas e
+abre o navegador sozinho em `http://localhost:5173`. Pra parar, `parar-croqui.bat`
+(ou só fechar as duas janelas pretas).
+
+**Manual:**
 ```bash
 npm install
 
