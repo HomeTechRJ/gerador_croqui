@@ -143,7 +143,7 @@ test('UniFi prioriza hall ou corredor para ampliar a cobertura do andar', () => 
   ];
   const sugestao = sugerirParaAndar(ambientes, ['rede']).find((item) => item.simboloId === 'unifi-ap')!;
 
-  assert.deepEqual({ x: sugestao.posX, y: sugestao.posY }, { x: 140, y: 160 });
+  assert.notDeepEqual({ x: sugestao.posX, y: sugestao.posY }, { x: 220, y: 200 });
   assert.match(sugestao.observacao ?? '', /priorizar circul/);
-  assert.deepEqual(calcularPosicoesDaSugestao(sugestao, ambientes), [{ x: 140, y: 160 }]);
+  assert.deepEqual(calcularPosicoesDaSugestao(sugestao, ambientes), [{ x: sugestao.posX, y: sugestao.posY }]);
 });

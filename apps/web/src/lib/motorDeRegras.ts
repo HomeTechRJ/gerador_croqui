@@ -111,9 +111,17 @@ function escolherAmbientesDeCirculacaoParaAp(ambientes: AmbienteDetectado[]): Am
     .sort((a, b) => (b.areaM2 ?? 0) - (a.areaM2 ?? 0));
 }
 
+function centroDoAmbienteParaAp(ambiente: AmbienteDetectado, ambientes: AmbienteDetectado[]): { x: number; y: number } {
+  const zona = calcularZonaDoAmbiente(ambiente, ambientes, ambiente.limites);
+  return zona ? centroDaRegiao(zona) : { x: ambiente.posX, y: ambiente.posY };
+}
+
 function escolherPosicaoDoAp(ambientes: AmbienteDetectado[]): { posX: number; posY: number } {
   const circulacao = escolherAmbientesDeCirculacaoParaAp(ambientes)[0];
-  if (circulacao) return { posX: circulacao.posX, posY: circulacao.posY };
+  if (circulacao) {
+    const centro = centroDoAmbienteParaAp(circulacao, ambientes);
+    return { posX: centro.x, posY: centro.y };
+  }
   const grupoPrincipal = agruparAmbientes(ambientes)[0] ?? ambientes;
   return centroDosAmbientes(grupoPrincipal);
 }
@@ -464,7 +472,7 @@ function escolherPosicoesDosAps(
   const grupoPrincipal = agruparAmbientes(ambientes)[0] ?? ambientes;
   const centro = grupoPrincipal.length > 0 ? centroDosAmbientes(grupoPrincipal) : undefined;
   const base = circulacoes[0]
-    ? { x: circulacoes[0].posX, y: circulacoes[0].posY }
+    ? centroDoAmbienteParaAp(circulacoes[0], ambientes)
     : regiao
       ? centroDaRegiao(regiao)
       : centro
@@ -474,7 +482,8 @@ function escolherPosicoesDosAps(
 
   for (const circulacao of circulacoes) {
     if (pontos.length >= quantidade) break;
-    const ponto = limitarNaRegiao({ x: circulacao.posX, y: circulacao.posY }, regiao);
+    const centroCirculacao = centroDoAmbienteParaAp(circulacao, ambientes);
+    const ponto = limitarNaRegiao(centroCirculacao, regiao);
     if (pontos.every((existente) => distanciaEntrePontos(existente, ponto) >= 36)) pontos.push(ponto);
   }
 
@@ -687,6 +696,20 @@ export function calcularPosicoesDaSugestao(
     return pontosReferencia.slice(0, sugestao.quantidade).map((ponto) => ({ ...ponto }));
   }
   const regiao = sugestao.limites ?? ambiente?.limites;
+  if (sugestao.simboloId === "unifi-ap" && ambiente) {
+    const zona = calcularZonaDoAmbiente(ambiente, ambientes, regiao) ?? regiao;
+    const centro = centroDoAmbienteParaAp(ambiente, ambientes);
+    const offsets = [
+      { x: 0, y: 0 },
+      { x: 48, y: 0 },
+      { x: -48, y: 0 },
+      { x: 0, y: 48 },
+      { x: 0, y: -48 },
+    ];
+    return offsets
+      .slice(0, sugestao.quantidade)
+      .map((offset) => limitarNaRegiao({ x: centro.x + offset.x, y: centro.y + offset.y }, zona));
+  }
   if (sugestao.simboloId === "unifi-ap" && sugestao.ambiente === "cobertura do andar" && !ambiente) {
     return escolherPosicoesDosAps(ambientes, sugestao.quantidade, regiao);
   }

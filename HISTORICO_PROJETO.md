@@ -71,3 +71,7 @@ O posicionamento final enviado pelo usuário é:
 - A posição do ponto passa a ser o centro do ambiente de circulação escolhido, com confirmação visual de cobertura pelo projetista.
 - Se nenhum ambiente de circulação for detectado, o motor mantém o fallback no centro do conjunto principal e sinaliza a sugestão para revisão.
 - UniFi definido manualmente no briefing continua respeitando o local escolhido pelo usuário.
+
+## Centralização do UniFi
+
+- Em um hall ou corredor, o ponto é colocado no centro da zona local estimada do ambiente, e não sobre o rótulo textual ou junto à borda.
