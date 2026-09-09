@@ -273,7 +273,7 @@ export function QuestionarioView({ projeto, planta, ambienteInicial, onConcluido
   async function handleSalvar() {
     setErro(null);
     if (configuracoes.length === 0) {
-      setErro("Nenhum comodo foi identificado nesta planta.");
+      setErro("Nenhum nome de comodo foi identificado nesta planta. Cadastre pelo menos um comodo manualmente para continuar.");
       return;
     }
     if (servicosSelecionados.size === 0) {
@@ -339,7 +339,7 @@ export function QuestionarioView({ projeto, planta, ambienteInicial, onConcluido
 
       {detectando ? <p className="subtitulo">Identificando comodos nas plantas...</p> : (
         <>
-          {configuracoes.length === 0 && <p className="erro" role="alert">Nenhum comodo foi identificado. Verifique se a planta esta legivel ou envie uma versao em PDF vetorial.</p>}
+          {configuracoes.length === 0 && <p className="erro" role="alert">Nenhum nome de comodo foi identificado. Esta prancha pode conter apenas pontos eletricos, sem rotulos de ambientes. Cadastre os comodos manualmente abaixo ou envie a planta arquitetonica com os nomes.</p>}
 
           <section className="briefing-secao briefing-manual">
             <h2>Adicionar comodo que nao foi encontrado</h2>

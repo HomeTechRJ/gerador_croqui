@@ -75,3 +75,9 @@ O posicionamento final enviado pelo usuário é:
 ## Centralização do UniFi
 
 - Em um hall ou corredor, o ponto é colocado no centro da zona local estimada do ambiente, e não sobre o rótulo textual ou junto à borda.
+
+## Planta elétrica sem rótulos de ambientes
+
+- A prancha **PONTOS ELÉTRICOS - REV 00 - 24.06.26 - EVELINE E BRUNO** foi analisada: suas duas páginas são pranchas elétricas/luminotécnicas e não trazem nomes de cômodos no texto ou na imagem principal.
+- O detector agora tenta OCR também quando o PDF possui texto parcial, como legendas, mas não encontrou ambientes. Quando a própria prancha não informa os nomes, o app não deve inventar cômodos.
+- Para esse tipo de arquivo, o fluxo correto é cadastrar os cômodos manualmente pelo botão **Adicionar cômodo na planta**, ou importar a planta arquitetônica que contenha os rótulos.

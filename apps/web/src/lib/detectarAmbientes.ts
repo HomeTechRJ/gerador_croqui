@@ -394,7 +394,13 @@ export async function detectarAmbientes(planta: PlantaImportada): Promise<Ambien
     itens.push({ texto, x, y });
   }
 
-  if (itens.length === 0) {
+  const temPistaDeAmbiente = itens.some(
+    (item) => extrairArea(item.texto) !== null || pareceNomeDeAmbienteSemArea(item.texto)
+  );
+  // Alguns PDFs misturam texto vetorial (legendas e carimbo) com nomes de
+  // ambientes desenhados como imagem ou convertidos em contornos. Nesse caso,
+  // o PDF nao esta vazio, mas ainda assim precisamos tentar OCR.
+  if (itens.length === 0 || !temPistaDeAmbiente) {
     itens.push(...(await detectarItensPorOcr(pagina, viewport)));
   }
 
