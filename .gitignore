@@ -12,3 +12,4 @@ plantas.json
 data/
 *.db
 artifacts/
+*.traineddata
