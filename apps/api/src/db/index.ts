@@ -25,6 +25,7 @@ function ensureColuna(tabela: string, coluna: string, definicaoSql: string): voi
 }
 
 ensureColuna("croqui_pontos", "rotacao", "REAL NOT NULL DEFAULT 0");
+ensureColuna("questionarios", "configuracao_json", "TEXT NOT NULL DEFAULT '{}'");
 
 export function agoraISO(): string {
   return new Date().toISOString();

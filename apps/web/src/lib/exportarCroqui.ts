@@ -28,16 +28,16 @@ function desenharSimbolo(
 
   if (simbolo.forma === "circulo") {
     ctx.beginPath();
-    ctx.arc(0, 0, 11 * escala, 0, Math.PI * 2);
+    ctx.arc(0, 0, 8 * escala, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   } else if (simbolo.forma === "quadrado") {
-    const lado = 18 * escala;
+    const lado = 12 * escala;
     ctx.fillRect(-lado / 2, -lado / 2, lado, lado);
     ctx.strokeRect(-lado / 2, -lado / 2, lado, lado);
   } else {
-    const largura = 28 * escala;
-    const altura = 15 * escala;
+    const largura = 22 * escala;
+    const altura = 12 * escala;
     ctx.fillRect(-largura / 2, -altura / 2, largura, altura);
     ctx.strokeRect(-largura / 2, -altura / 2, largura, altura);
   }

@@ -5,7 +5,6 @@ import type {
   PlantaImportada,
   Projeto,
   QuestionarioProjeto,
-  ServiceCategory,
 } from "@croqui/shared";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
@@ -32,6 +31,11 @@ export async function listarProjetos(): Promise<Projeto[]> {
   return tratarResposta(res, "Falha ao listar projetos.");
 }
 
+export async function excluirProjeto(projetoId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/projetos/${projetoId}`, { method: "DELETE" });
+  await tratarResposta<{ ok: boolean }>(res, "Falha ao excluir o projeto.");
+}
+
 export async function enviarPlanta(projetoId: string, arquivo: File): Promise<PlantaImportada> {
   const formData = new FormData();
   formData.append("projetoId", projetoId);
@@ -52,13 +56,15 @@ export function urlArquivoPlanta(id: string): string {
 
 export async function salvarQuestionario(
   projetoId: string,
-  servicos: ServiceCategory[],
-  observacoes: string
+  questionario: Omit<QuestionarioProjeto, "projetoId">
 ): Promise<QuestionarioProjeto> {
   const res = await fetch(`${API_URL}/projetos/${projetoId}/questionario`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ servicos, observacoes: observacoes || undefined }),
+    body: JSON.stringify({
+      ...questionario,
+      observacoes: questionario.observacoes || undefined,
+    }),
   });
   return tratarResposta(res, "Falha ao salvar o questionário.");
 }

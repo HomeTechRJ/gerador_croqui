@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Projeto } from "@croqui/shared";
-import { criarProjeto, listarProjetos } from "../api";
+import { criarProjeto, excluirProjeto, listarProjetos } from "../api";
 
 interface Props {
   onSelecionar: (projeto: Projeto) => void;
@@ -11,6 +11,7 @@ export function ProjetoView({ onSelecionar }: Props) {
   const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [projetos, setProjetos] = useState<Projeto[] | null>(null);
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
 
   useEffect(() => {
     listarProjetos()
@@ -30,6 +31,25 @@ export function ProjetoView({ onSelecionar }: Props) {
       setErro(err instanceof Error ? err.message : "Erro inesperado ao criar o projeto.");
     } finally {
       setCriando(false);
+    }
+  }
+
+  async function handleExcluir(e: React.MouseEvent, projeto: Projeto) {
+    e.stopPropagation();
+    const confirmou = window.confirm(
+      `Excluir o projeto "${projeto.nomeCliente}"? Isso removera as plantas, o briefing e as versoes salvas do croqui.`
+    );
+    if (!confirmou) return;
+
+    setErro(null);
+    setExcluindoId(projeto.id);
+    try {
+      await excluirProjeto(projeto.id);
+      setProjetos((atuais) => atuais?.filter((item) => item.id !== projeto.id) ?? []);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro inesperado ao excluir o projeto.");
+    } finally {
+      setExcluindoId(null);
     }
   }
 
@@ -61,10 +81,19 @@ export function ProjetoView({ onSelecionar }: Props) {
           <p className="eyebrow">Projetos recentes</p>
           <ul>
             {projetos.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="item-projeto-linha">
                 <button type="button" className="item-projeto" onClick={() => onSelecionar(p)}>
                   <span>{p.nomeCliente}</span>
                   <span className="data-projeto">{new Date(p.atualizadoEm).toLocaleDateString("pt-BR")}</span>
+                </button>
+                <button
+                  type="button"
+                  className="item-projeto-excluir"
+                  onClick={(e) => handleExcluir(e, p)}
+                  disabled={excluindoId === p.id}
+                  title="Excluir projeto"
+                >
+                  {excluindoId === p.id ? "..." : "Excluir"}
                 </button>
               </li>
             ))}

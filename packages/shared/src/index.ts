@@ -49,11 +49,35 @@ export const SIMBOLOS_PADRAO: SymbolDefinition[] = [
   { id: "quadro-automacao", categoria: "automacao", nome: "Quadro de automação", forma: "retangulo", cor: "#C97A2D", confirmado: true },
 ];
 
-/** Respostas do questionario inicial, que define quais simbolos ficam disponiveis. */
+export type TipoAudioAmbiente = "nenhum" | "receiver" | "multiroom" | "bluetooth";
+
+export interface ConfiguracaoAmbiente {
+  plantaId?: string;
+  nome: string;
+  areaM2: number | null;
+  posX: number;
+  posY: number;
+  manual?: boolean;
+  caixasSom: number;
+  pontosRede: number;
+  tipoAudio: TipoAudioAmbiente;
+}
+
+export interface LocalizacaoEquipamento {
+  plantaId?: string;
+  ambienteNome: string;
+  posX?: number;
+  posY?: number;
+}
+
+/** Briefing do cliente e respostas que definem o croqui. */
 export interface QuestionarioProjeto {
   projetoId: string;
   servicos: ServiceCategory[];
   observacoes?: string;
+  ambientes?: ConfiguracaoAmbiente[];
+  unifiAps?: LocalizacaoEquipamento[];
+  quadrosAutomacao?: LocalizacaoEquipamento[];
 }
 
 /** Formatos de planta aceitos na importacao. */

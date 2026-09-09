@@ -4,7 +4,7 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { copyFile } from "node:fs/promises";
+import { copyFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { createWriteStream } from "node:fs";
@@ -17,7 +17,7 @@ import type {
 import { converterDwgParaDxf } from "./converter.js";
 import { agoraISO } from "./db/index.js";
 import { buscarPlanta, listarPlantasPorProjeto, salvarPlanta } from "./db/plantas.js";
-import { buscarProjeto, criarProjeto, listarProjetos } from "./db/projetos.js";
+import { buscarProjeto, criarProjeto, excluirProjeto, listarProjetos } from "./db/projetos.js";
 import { buscarQuestionario, salvarQuestionario } from "./db/questionarios.js";
 import { buscarCroquiComPontos, criarVersaoCroqui, listarVersoesCroqui } from "./db/croquis.js";
 import { ensureDirs, extensaoParaFormato, PROCESSED_DIR, UPLOADS_DIR } from "./storage.js";
@@ -49,6 +49,33 @@ app.get("/projetos/:id", async (request, reply) => {
   const projeto = buscarProjeto(id);
   if (!projeto) return reply.code(404).send({ erro: "Projeto nao encontrado." });
   return projeto;
+});
+
+app.delete("/projetos/:id", async (request, reply) => {
+  const { id } = request.params as { id: string };
+  const projeto = buscarProjeto(id);
+  if (!projeto) return reply.code(404).send({ erro: "Projeto nao encontrado." });
+
+  const plantas = listarPlantasPorProjeto(id);
+  if (!excluirProjeto(id)) return reply.code(404).send({ erro: "Projeto nao encontrado." });
+
+  await Promise.all(
+    plantas.flatMap((planta) => {
+      const caminhos = [
+        path.join(UPLOADS_DIR, `${planta.id}.${planta.formatoOriginal}`),
+        planta.formatoExibicao ? path.join(PROCESSED_DIR, `${planta.id}.${planta.formatoExibicao}`) : null,
+      ].filter((caminho): caminho is string => caminho !== null);
+      return caminhos.map(async (caminho) => {
+        try {
+          await unlink(caminho);
+        } catch {
+          // O registro do projeto ja foi removido; arquivo ausente nao bloqueia a exclusao.
+        }
+      });
+    })
+  );
+
+  return { ok: true };
 });
 
 // ---- Plantas (Fase 1) ----
@@ -135,7 +162,13 @@ app.put("/projetos/:id/questionario", async (request, reply) => {
   const { id } = request.params as { id: string };
   if (!buscarProjeto(id)) return reply.code(404).send({ erro: "Projeto nao encontrado." });
 
-  const body = request.body as { servicos?: ServiceCategory[]; observacoes?: string };
+  const body = request.body as {
+    servicos?: ServiceCategory[];
+    observacoes?: string;
+    ambientes?: QuestionarioProjeto["ambientes"];
+    unifiAps?: QuestionarioProjeto["unifiAps"];
+    quadrosAutomacao?: QuestionarioProjeto["quadrosAutomacao"];
+  };
   if (!Array.isArray(body.servicos)) {
     return reply.code(400).send({ erro: "Informe 'servicos' como lista." });
   }
@@ -144,6 +177,9 @@ app.put("/projetos/:id/questionario", async (request, reply) => {
     projetoId: id,
     servicos: body.servicos,
     observacoes: body.observacoes,
+    ambientes: body.ambientes,
+    unifiAps: body.unifiAps,
+    quadrosAutomacao: body.quadrosAutomacao,
   };
   return salvarQuestionario(questionario);
 });

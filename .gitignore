@@ -11,3 +11,4 @@ converted/
 plantas.json
 data/
 *.db
+artifacts/

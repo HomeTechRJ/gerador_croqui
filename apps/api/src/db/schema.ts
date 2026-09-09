@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS questionarios (
   projeto_id TEXT PRIMARY KEY REFERENCES projetos(id) ON DELETE CASCADE,
   servicos TEXT NOT NULL DEFAULT '[]', -- JSON array de ServiceCategory
   observacoes TEXT,
+  configuracao_json TEXT NOT NULL DEFAULT '{}',
   atualizado_em TEXT NOT NULL
 );
 

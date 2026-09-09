@@ -123,7 +123,8 @@
 }
 
 .item-projeto {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   font: inherit;
@@ -138,6 +139,31 @@
 
 .item-projeto:hover {
   border-color: var(--accent);
+}
+
+.item-projeto-linha {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.item-projeto-excluir {
+  padding: 10px 12px;
+  border: 1px solid #d8a0a0;
+  border-radius: 8px;
+  background: var(--bg);
+  color: #9d3030;
+  cursor: pointer;
+}
+
+.item-projeto-excluir:hover:not(:disabled) {
+  border-color: #b84848;
+  background: #fff4f4;
+}
+
+.item-projeto-excluir:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .data-projeto {
@@ -182,6 +208,142 @@
   background: var(--bg);
   color: var(--text-h);
   resize: vertical;
+}
+
+.briefing-view {
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+.briefing-view .upload-header {
+  width: min(900px, 94vw);
+}
+
+.briefing-secao {
+  width: min(900px, 94vw);
+  text-align: left;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.briefing-secao h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.briefing-ajuda {
+  margin: 0 0 16px;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.briefing-servicos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.briefing-manual-campos {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(180px, 2fr) repeat(2, minmax(100px, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.briefing-manual-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--text-h);
+  font-size: 0.875rem;
+}
+
+.briefing-manual-campos input,
+.briefing-manual-campos select {
+  min-width: 0;
+  font: inherit;
+  padding: 7px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+@media (max-width: 820px) {
+  .briefing-manual-campos {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+}
+
+.briefing-ambientes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.briefing-ambiente {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.briefing-ambiente-titulo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-h);
+}
+
+.briefing-ambiente-titulo span {
+  color: var(--text);
+  font-size: 0.8125rem;
+}
+
+.briefing-ambiente label,
+.briefing-globais label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-h);
+  font-size: 0.875rem;
+}
+
+.briefing-ambiente input,
+.briefing-ambiente select,
+.briefing-globais input,
+.briefing-globais select {
+  min-width: 90px;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.briefing-globais {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.briefing-resumo {
+  width: min(500px, 90vw);
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-h);
+}
+
+.briefing-resumo p {
+  margin: 8px 0;
 }
 
 .preview-simbolos {
@@ -252,6 +414,26 @@
   border-color: var(--accent) !important;
   background: var(--accent-bg) !important;
   font-weight: 600;
+}
+
+.botao-limpar {
+  border-color: #d8a0a0 !important;
+  color: #9d3030 !important;
+}
+
+.botao-modo-ativo {
+  border-color: var(--accent) !important;
+  background: var(--accent-bg) !important;
+}
+
+.botao-limpar:hover:not(:disabled) {
+  border-color: #b84848 !important;
+  background: #fff4f4 !important;
+}
+
+.botao-limpar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
 }
 
 .nome-arquivo {
@@ -408,6 +590,47 @@
   color: var(--text-h);
 }
 
+.planta-tab-container {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+}
+
+.planta-tab-selecionar,
+.planta-tab-fechar {
+  font: inherit;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.planta-tab-selecionar {
+  padding: 6px 8px 6px 12px;
+}
+
+.planta-tab-fechar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 3px;
+  border-radius: 50%;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.planta-tab-fechar:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-h);
+}
+
+.planta-tab-action {
+  color: var(--text);
+}
+
 .planta-tab-add {
   color: var(--accent);
 }
@@ -457,6 +680,7 @@
 
 .canvas-stage {
   position: relative;
+  flex-shrink: 0;
   transform-origin: center center;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
@@ -493,9 +717,10 @@
   position: absolute;
   left: 0;
   top: 0;
+  box-sizing: border-box;
   transform: translate(-50%, -50%);
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border: 2px solid white;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
@@ -523,8 +748,13 @@
 }
 
 .ponto-marcador.retangulo {
-  width: 30px;
-  height: 16px;
+  width: 22px;
+  height: 12px;
+}
+
+.ponto-marcador.quadrado {
+  width: 12px;
+  height: 12px;
 }
 
 .ponto-handle-rotacionar {

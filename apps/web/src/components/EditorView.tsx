@@ -22,18 +22,39 @@ import {
 } from "../lib/exportarCroqui";
 import { ambienteMaisProximo, detectarAmbientes } from "../lib/detectarAmbientes";
 import type { AmbienteDetectado } from "../lib/detectarAmbientes";
-import { sugerirParaAmbiente, sugerirParaAndar } from "../lib/motorDeRegras";
+import {
+  calcularPosicoesDaSugestao,
+  sugerirParaAmbiente,
+  sugerirParaAndar,
+  sugerirPeloBriefing,
+} from "../lib/motorDeRegras";
 import { calcularEscalaRenderizacao } from "../lib/pdfRender";
+import type { PDFPageProxy } from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 interface Props {
   projeto: Projeto;
   plantaInicial: PlantaImportada;
+  /** Rascunho preservado ao editar o briefing e voltar para a planta. */
+  pontosIniciais?: PontoLocal[];
   onVoltar: () => void;
+  onPlantaAtivaChange?: (plantaId: string) => void;
+  onSemPlantas?: () => void;
+  onEditarBriefing?: (
+    planta: PlantaImportada,
+    ambienteInicial?: PosicaoAmbienteInicial,
+    pontosAtuais?: PontoLocal[]
+  ) => void;
 }
 
-interface PontoLocal {
+export interface PosicaoAmbienteInicial {
+  posX: number;
+  posY: number;
+  nome?: string;
+}
+
+export interface PontoLocal {
   id: string;
   plantaId: string;
   simboloId: string;
@@ -50,9 +71,71 @@ interface PontoLocal {
 const ESCALA_MIN = 0.2;
 const ESCALA_MAX = 8;
 const LIMIAR_CLIQUE_PX = 5;
+// Evita criar um bitmap gigantesco quando uma planta grande e ampliada fica
+// aberta por muito tempo. Dentro desse limite, o canvas acompanha o zoom e
+// as letras continuam sendo rasterizadas na resolucao em que serao exibidas.
+const MAX_PIXELS_CANVAS_ZOOM = 64_000_000;
+const CHAVE_PLANTAS_FECHADAS = "gerador-croqui:plantas-fechadas:v1";
 
-export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
+function completarAmbientesDoBriefing(
+  ambientesDetectados: AmbienteDetectado[],
+  questionario: QuestionarioProjeto,
+  plantaId: string
+): AmbienteDetectado[] {
+  const configurados = (questionario.ambientes ?? []).filter(
+    (item) => item.plantaId === plantaId || item.plantaId === undefined
+  );
+  const manuais = configurados
+    .filter(
+      (item) =>
+        !ambientesDetectados.some(
+          (ambiente) => ambiente.nome === item.nome && Math.hypot(ambiente.posX - item.posX, ambiente.posY - item.posY) < 100
+        )
+    )
+    .map((item) => ({
+      nome: item.nome,
+      areaM2: item.areaM2,
+      posX: item.posX,
+      posY: item.posY,
+      temComputadores: false,
+    }));
+
+  return [...ambientesDetectados, ...manuais];
+}
+
+function percentualNoCanvas(valor: number, total: number): string {
+  return total > 0 ? `${(valor / total) * 100}%` : "0%";
+}
+
+function lerIdsPlantasFechadas(projetoId: string): Set<string> {
+  try {
+    const valor = window.localStorage.getItem(`${CHAVE_PLANTAS_FECHADAS}:${projetoId}`);
+    const ids: unknown = valor ? JSON.parse(valor) : [];
+    return new Set(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function salvarIdsPlantasFechadas(projetoId: string, ids: Set<string>): void {
+  try {
+    window.localStorage.setItem(`${CHAVE_PLANTAS_FECHADAS}:${projetoId}`, JSON.stringify([...ids]));
+  } catch {
+    // O fechamento continua funcionando durante a sessão se o storage estiver bloqueado.
+  }
+}
+
+export function EditorView({
+  projeto,
+  plantaInicial,
+  pontosIniciais,
+  onVoltar,
+  onPlantaAtivaChange,
+  onSemPlantas,
+  onEditarBriefing,
+}: Props) {
   const [plantas, setPlantas] = useState<PlantaImportada[]>([plantaInicial]);
+  const idsPlantasFechadas = useRef(lerIdsPlantasFechadas(projeto.id));
   const [plantaAtivaId, setPlantaAtivaId] = useState(plantaInicial.id);
   const [questionario, setQuestionario] = useState<QuestionarioProjeto | null>(null);
   const [simboloAtivo, setSimboloAtivo] = useState<SymbolDefinition | null>(null);
@@ -73,8 +156,11 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   const [transform, setTransform] = useState({ escala: 1, x: 0, y: 0 });
   const [tamanhoCanvas, setTamanhoCanvas] = useState({ largura: 0, altura: 0 });
   const [carregandoPdf, setCarregandoPdf] = useState(true);
+  const [paginaPdf, setPaginaPdf] = useState<PDFPageProxy | null>(null);
   const [ambientesDetectados, setAmbientesDetectados] = useState<AmbienteDetectado[]>([]);
+  const [detectandoAmbientes, setDetectandoAmbientes] = useState(false);
   const [mostrarAmbientes, setMostrarAmbientes] = useState(true);
+  const [adicionandoAmbiente, setAdicionandoAmbiente] = useState(false);
 
   const arraste = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const cliqueCandidato = useRef(false);
@@ -88,11 +174,30 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   // Carrega plantas do projeto, questionario e a ultima versao salva (se houver).
   useEffect(() => {
     listarPlantasDoProjeto(projeto.id).then((lista) => {
-      if (lista.length > 0) setPlantas(lista);
+      const abertas = lista.filter((planta) => !idsPlantasFechadas.current.has(planta.id));
+      if (abertas.length === 0) {
+        setPlantas([]);
+        onSemPlantas?.();
+        return;
+      }
+
+      setPlantas(abertas);
+      if (!abertas.some((planta) => planta.id === plantaAtivaId)) {
+        setPlantaAtivaId(abertas[0].id);
+        onPlantaAtivaChange?.(abertas[0].id);
+      }
     });
     buscarQuestionario(projeto.id).then(setQuestionario);
     listarVersoesCroqui(projeto.id).then(async (lista) => {
       setVersoes(lista);
+      if (pontosIniciais !== undefined) {
+        // Ao voltar do briefing, o rascunho do editor tem prioridade sobre a
+        // última versão salva: ela pode ser mais antiga que o que o usuario
+        // acabou de posicionar na planta.
+        setPontos(pontosIniciais.map((ponto) => ({ ...ponto })));
+        setVersaoCarregada(null);
+        return;
+      }
       if (lista.length > 0) {
         const ultima = await buscarCroqui(lista[0].id);
         setPontos(
@@ -109,11 +214,13 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
         setVersaoCarregada(ultima.croqui.versao);
       }
     });
-  }, [projeto.id, plantaInicial.id]);
+  }, [projeto.id, plantaInicial.id, pontosIniciais]);
 
-  // Renderiza a planta ativa (PDF) no canvas.
+  // Carrega a pagina ativa. O render em si fica em outro efeito para poder
+  // repetir o desenho em uma resolucao maior quando o usuario amplia o zoom.
   useEffect(() => {
     if (plantaAtiva.formatoExibicao !== "pdf") {
+      setPaginaPdf(null);
       setCarregandoPdf(false);
       return;
     }
@@ -121,25 +228,18 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     let cancelado = false;
     setCarregandoPdf(true);
     setErro(null);
+    setPaginaPdf(null);
+    setTamanhoCanvas({ largura: 0, altura: 0 });
+    setTransform({ escala: 1, x: 0, y: 0 });
 
     (async () => {
       try {
         const documento = await pdfjsLib.getDocument(urlArquivoPlanta(plantaAtiva.id)).promise;
         const pagina = await documento.getPage(1);
-        const viewport = pagina.getViewport({ scale: calcularEscalaRenderizacao(pagina) });
-
-        const canvas = canvasRef.current;
-        if (!canvas || cancelado) return;
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const contexto = canvas.getContext("2d");
-        if (!contexto) return;
-
-        await pagina.render({ canvasContext: contexto, viewport }).promise;
         if (cancelado) return;
+        const viewport = pagina.getViewport({ scale: calcularEscalaRenderizacao(pagina) });
         setTamanhoCanvas({ largura: viewport.width, altura: viewport.height });
-        setTransform({ escala: 1, x: 0, y: 0 });
-        setCarregandoPdf(false);
+        setPaginaPdf(pagina);
       } catch (err) {
         if (!cancelado) {
           setErro(err instanceof Error ? err.message : "Falha ao renderizar o PDF.");
@@ -153,17 +253,84 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     };
   }, [plantaAtiva]);
 
+  // Renderiza em um canvas temporario e so troca o canvas visivel quando a
+  // operacao termina. O canvas visivel mantem sempre o tamanho logico da
+  // planta, enquanto o bitmap interno cresce com o zoom/DPI da tela.
+  useEffect(() => {
+    if (!paginaPdf || tamanhoCanvas.largura <= 0 || tamanhoCanvas.altura <= 0) return;
+
+    let cancelado = false;
+    let renderTask: { cancel: () => void; promise: Promise<void> } | null = null;
+    const zoomAtual = transform.escala;
+    const escalaBase = calcularEscalaRenderizacao(paginaPdf);
+    const viewportLogico = paginaPdf.getViewport({ scale: escalaBase });
+    const pixelsPorCssPixel = Math.max(1, window.devicePixelRatio || 1) * Math.max(1, zoomAtual);
+    const fatorPorArea = Math.sqrt(
+      MAX_PIXELS_CANVAS_ZOOM / Math.max(1, viewportLogico.width * viewportLogico.height)
+    );
+    const fatorRenderizacao = Math.max(1, Math.min(pixelsPorCssPixel, fatorPorArea));
+    const viewportRender = paginaPdf.getViewport({ scale: escalaBase * fatorRenderizacao });
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Uma pequena espera agrupa varios eventos da roda do mouse em um unico
+    // render, evitando renderizar a pagina inteira a cada evento intermediario.
+    const timer = window.setTimeout(() => {
+      const canvasTemporario = document.createElement("canvas");
+      canvasTemporario.width = Math.ceil(viewportRender.width);
+      canvasTemporario.height = Math.ceil(viewportRender.height);
+      const contextoTemporario = canvasTemporario.getContext("2d");
+      if (!contextoTemporario || cancelado) return;
+
+      renderTask = paginaPdf.render({ canvasContext: contextoTemporario, viewport: viewportRender });
+      renderTask.promise
+        .then(() => {
+          if (cancelado || !canvasRef.current) return;
+          const canvasVisivel = canvasRef.current;
+          canvasVisivel.width = canvasTemporario.width;
+          canvasVisivel.height = canvasTemporario.height;
+          const contextoVisivel = canvasVisivel.getContext("2d");
+          if (!contextoVisivel) return;
+          contextoVisivel.drawImage(canvasTemporario, 0, 0);
+          setCarregandoPdf(false);
+        })
+        .catch((err: unknown) => {
+          // Cancelar um render anterior durante o zoom e um fluxo normal.
+          if (!cancelado && !(err instanceof Error && err.name === "RenderingCancelledException")) {
+            setErro(err instanceof Error ? err.message : "Falha ao renderizar o PDF.");
+            setCarregandoPdf(false);
+          }
+        });
+    }, zoomAtual === 1 ? 0 : 90);
+
+    return () => {
+      cancelado = true;
+      window.clearTimeout(timer);
+      renderTask?.cancel();
+    };
+  }, [paginaPdf, tamanhoCanvas.altura, tamanhoCanvas.largura, transform.escala]);
+
   // Le o texto ja embutido no PDF pra descobrir os ambientes/metragens
   // sozinho (sem IA, sem o usuario digitar nada) - ver lib/detectarAmbientes.
   useEffect(() => {
     if (plantaAtiva.formatoExibicao !== "pdf") {
       setAmbientesDetectados([]);
+      setDetectandoAmbientes(false);
       return;
     }
     let cancelado = false;
-    detectarAmbientes(plantaAtiva).then((ambientes) => {
-      if (!cancelado) setAmbientesDetectados(ambientes);
-    });
+    setAmbientesDetectados([]);
+    setDetectandoAmbientes(true);
+    detectarAmbientes(plantaAtiva)
+      .then((ambientes) => {
+        if (!cancelado) setAmbientesDetectados(ambientes);
+      })
+      .catch((err: unknown) => {
+        if (!cancelado) setErro(err instanceof Error ? err.message : "Falha ao detectar os ambientes da planta.");
+      })
+      .finally(() => {
+        if (!cancelado) setDetectandoAmbientes(false);
+      });
     return () => {
       cancelado = true;
     };
@@ -215,13 +382,17 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
   }
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
-    if (!arraste.current) return;
-    const dx = e.clientX - arraste.current.startX;
-    const dy = e.clientY - arraste.current.startY;
+    // Guarda o gesto localmente. O updater de setState pode ser executado
+    // depois de um pointerup, que limpa arraste.current; ler a ref dentro do
+    // updater deixava uma janela para "Cannot read properties of null".
+    const gesto = arraste.current;
+    if (!gesto) return;
+    const dx = e.clientX - gesto.startX;
+    const dy = e.clientY - gesto.startY;
     if (Math.abs(dx) > LIMIAR_CLIQUE_PX || Math.abs(dy) > LIMIAR_CLIQUE_PX) {
       cliqueCandidato.current = false;
     }
-    setTransform((t) => ({ ...t, x: arraste.current!.origX + dx, y: arraste.current!.origY + dy }));
+    setTransform((t) => ({ ...t, x: gesto.origX + dx, y: gesto.origY + dy }));
   }
 
   function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
@@ -230,6 +401,16 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     cliqueCandidato.current = false;
     if (!foiClique) return;
     if ((e.target as HTMLElement).closest(".ponto-item")) return;
+
+    if (adicionandoAmbiente && stageRef.current && onEditarBriefing) {
+      const rect = stageRef.current.getBoundingClientRect();
+      const posX = ((e.clientX - rect.left) / rect.width) * tamanhoCanvas.largura;
+      const posY = ((e.clientY - rect.top) / rect.height) * tamanhoCanvas.altura;
+      const nome = window.prompt("Nome do comodo neste ponto da planta:", "Banheiro")?.trim();
+      setAdicionandoAmbiente(false);
+      if (nome) onEditarBriefing(plantaAtiva, { nome, posX, posY }, pontos);
+      return;
+    }
 
     setSelecionadoId(null);
 
@@ -275,70 +456,131 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     setSelecionadoId((atual) => (atual === id ? null : atual));
   }
 
+  function handleLimparSugestoes() {
+    const quantidade = pontosDaPlantaAtiva.length;
+    if (quantidade === 0) {
+      setMensagem("Esta planta já está limpa.");
+      return;
+    }
+
+    const confirmou = window.confirm(
+      `Limpar ${quantidade} símbolo(s) da planta "${plantaAtiva.nomeArquivoOriginal}"? A planta ficará vazia nesta edição.`
+    );
+    if (!confirmou) return;
+
+    setPontos((atual) => atual.filter((ponto) => ponto.plantaId !== plantaAtivaId));
+    setSelecionadoId(null);
+    setSimboloAtivo(null);
+    setMensagem("Planta limpa. Todos os símbolos foram removidos da edição atual.");
+    setErro(null);
+  }
+
   // ---- sugestao automatica (Fase 6.1 - motor de regras) ----
 
-  /** Espalha N pontos numa fileira horizontal em torno do centro do ambiente. */
-  function espalharPontos(qtd: number, cx: number, cy: number, espaco = 22): { x: number; y: number }[] {
-    const posicoes: { x: number; y: number }[] = [];
-    for (let i = 0; i < qtd; i++) {
-      const offset = i - (qtd - 1) / 2;
-      posicoes.push({ x: cx + offset * espaco, y: cy });
+  function handleAplicarReferencia() {
+    if (!questionario) return;
+    const ambientes = completarAmbientesDoBriefing(ambientesDetectados, questionario, plantaAtivaId);
+    const ambientesComReferencia = ambientes.filter((ambiente) => ambiente.referencia);
+    const tiposPorAmbiente = new Map<string, Set<string>>();
+    for (const ambiente of ambientesComReferencia) {
+      const tipos = new Set<string>();
+      if ((ambiente.referencia?.caixas.length ?? 0) > 0) {
+        tipos.add("caixa-embutir");
+        tipos.add("caixa-embutir-bluetooth");
+      }
+      if ((ambiente.referencia?.rede.length ?? 0) > 0) tipos.add("ponto-de-rede");
+      tiposPorAmbiente.set(ambiente.nome, tipos);
     }
-    return posicoes;
+    const sugestoes = sugerirPeloBriefing(ambientes, questionario, plantaAtivaId)
+      .filter((sugestao) => tiposPorAmbiente.get(sugestao.ambiente)?.has(sugestao.simboloId));
+    const novos: PontoLocal[] = sugestoes.flatMap((sugestao) =>
+      calcularPosicoesDaSugestao(sugestao, ambientes).map((posicao) => ({
+        id: crypto.randomUUID(), plantaId: plantaAtivaId, simboloId: sugestao.simboloId,
+        ambiente: sugestao.ambiente, posX: posicao.x, posY: posicao.y, rotacao: 0,
+        observacao: "Posição da referência aprovada para esta planta",
+      }))
+    );
+    const quantidadePendente = sugestoes.reduce((total, sugestao) => total + sugestao.quantidade, 0) - novos.length;
+    setPontos((atuais) => [
+      ...atuais.filter((ponto) => !(ponto.plantaId === plantaAtivaId &&
+        tiposPorAmbiente.get(ponto.ambiente ?? "")?.has(ponto.simboloId))),
+      ...novos,
+    ]);
+    setSelecionadoId(null);
+    setMensagem(`Referência aplicada: ${novos.length} símbolo(s) reposicionado(s).` +
+      (quantidadePendente > 0 ? ` ${quantidadePendente} item(ns) excedem as posições da referência e precisam de posicionamento manual.` : "") +
+      " Salve uma versão para guardar o resultado.");
+    setErro(null);
   }
 
   function handleSugerirAutomaticamente() {
-    if (!questionario || questionario.servicos.length === 0) {
-      setMensagem("Responda o questionário (quais serviços) antes de gerar sugestões.");
+    if (!questionario) {
+      setMensagem("Responda o briefing por cômodo antes de gerar o croqui.");
       return;
     }
-    if (ambientesDetectados.length === 0) {
+    const possuiBriefing = (questionario.ambientes?.length ?? 0) > 0;
+    if (!possuiBriefing && questionario.servicos.length === 0) {
+      setMensagem("Responda o briefing antes de gerar sugestões.");
+      return;
+    }
+    const ambientesParaSugestao = possuiBriefing
+      ? completarAmbientesDoBriefing(ambientesDetectados, questionario, plantaAtivaId)
+      : ambientesDetectados;
+    if (ambientesParaSugestao.length === 0) {
       setMensagem("Nenhum ambiente detectado nesta planta ainda - não dá pra sugerir nada.");
       return;
     }
 
-    const servicos = questionario.servicos;
-    const sugestoes = [
-      ...ambientesDetectados.flatMap((a) => sugerirParaAmbiente(a, servicos)),
-      ...sugerirParaAndar(ambientesDetectados, servicos),
-    ];
+    setAmbientesDetectados(ambientesParaSugestao);
+    const sugestoes = possuiBriefing
+      ? sugerirPeloBriefing(ambientesParaSugestao, questionario, plantaAtivaId)
+      : [
+          ...ambientesDetectados.flatMap((a) => sugerirParaAmbiente(a, questionario.servicos)),
+          ...sugerirParaAndar(ambientesDetectados, questionario.servicos),
+        ];
 
     if (sugestoes.length === 0) {
       setMensagem("Nenhuma regra bateu com os ambientes/serviços deste projeto.");
       return;
     }
 
-    setPontos((atual) => {
-      const jaSugerido = new Set(
-        atual.filter((p) => p.plantaId === plantaAtivaId).map((p) => `${p.ambiente ?? ""}::${p.simboloId}`)
-      );
-      const novos: PontoLocal[] = [];
-      for (const s of sugestoes) {
-        const chave = `${s.ambiente}::${s.simboloId}`;
-        if (jaSugerido.has(chave)) continue; // ja sugerido antes (evita duplicar em cliques repetidos)
-        for (const pos of espalharPontos(s.quantidade, s.posX, s.posY)) {
-          novos.push({
-            id: crypto.randomUUID(),
-            plantaId: plantaAtivaId,
-            simboloId: s.simboloId,
-            posX: pos.x,
-            posY: pos.y,
-            rotacao: 0,
-            ambiente: s.ambiente,
-            precisaRevisar: s.revisar,
-            observacao: s.observacao,
-          });
-        }
+    const jaSugerido = new Set(
+      pontos.filter((p) => p.plantaId === plantaAtivaId).map((p) => `${p.ambiente ?? ""}::${p.simboloId}`)
+    );
+    const novos: PontoLocal[] = [];
+    const pendentes: string[] = [];
+    for (const s of sugestoes) {
+      const chave = `${s.ambiente}::${s.simboloId}`;
+      if (jaSugerido.has(chave)) continue;
+      jaSugerido.add(chave);
+      const posicoes = calcularPosicoesDaSugestao(s, ambientesParaSugestao);
+      if (posicoes.length < s.quantidade) {
+        pendentes.push(`${s.ambiente}: ${s.quantidade - posicoes.length} ${s.simboloId === "ponto-de-rede" ? "ponto(s) de rede" : "símbolo(s)"}`);
       }
-      return [...atual, ...novos];
-    });
+      for (const pos of posicoes) {
+        novos.push({
+          id: crypto.randomUUID(),
+          plantaId: plantaAtivaId,
+          simboloId: s.simboloId,
+          posX: pos.x,
+          posY: pos.y,
+          rotacao: 0,
+          ambiente: s.ambiente,
+          precisaRevisar: s.revisar,
+          observacao: s.observacao,
+        });
+      }
+    }
+    setPontos((atual) => [...atual, ...novos]);
 
-    const totalSimbolos = sugestoes.reduce((soma, s) => soma + s.quantidade, 0);
-    const qtdRevisar = sugestoes.filter((s) => s.revisar).length;
+    const totalSimbolos = novos.length;
+    const qtdRevisar = novos.filter((s) => s.precisaRevisar).length;
     setMensagem(
       `${totalSimbolos} símbolo(s) sugerido(s)` +
         (qtdRevisar > 0 ? ` — ${qtdRevisar} marcado(s) em laranja pra você revisar.` : ".") +
-        " Ajuste posição/quantidade como quiser."
+        (pendentes.length > 0
+          ? ` Local ainda não identificado (${pendentes.join("; ")}). Posicione esses itens manualmente sobre a mesa, estante ou parede.`
+          : " Ajuste posição/quantidade como quiser.")
     );
     setErro(null);
   }
@@ -491,8 +733,70 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
       }
       setPlantas((atual) => [...atual, planta]);
       setPlantaAtivaId(planta.id);
+      onPlantaAtivaChange?.(planta.id);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro inesperado ao enviar o arquivo.");
+    }
+  }
+
+  function fecharPlantas(idsParaFechar: Set<string>) {
+    const paraFechar = plantas.filter((planta) => idsParaFechar.has(planta.id));
+    if (paraFechar.length === 0) return;
+
+    for (const planta of paraFechar) idsPlantasFechadas.current.add(planta.id);
+    salvarIdsPlantasFechadas(projeto.id, idsPlantasFechadas.current);
+    setPlantas((atual) => atual.filter((planta) => !idsParaFechar.has(planta.id)));
+
+    if (!idsParaFechar.has(plantaAtivaId)) return;
+
+    const proxima = plantas.find((planta) => !idsParaFechar.has(planta.id));
+    if (proxima) {
+      setPlantaAtivaId(proxima.id);
+      onPlantaAtivaChange?.(proxima.id);
+    } else {
+      onSemPlantas?.();
+    }
+  }
+
+  function handleFecharPlanta(planta: PlantaImportada) {
+    fecharPlantas(new Set([planta.id]));
+    setMensagem("Planta fechada.");
+  }
+
+  function handleFecharRepetidas() {
+    const quantidadePorNome = new Map<string, number>();
+    for (const planta of plantas) {
+      const nome = planta.nomeArquivoOriginal.trim().toLocaleLowerCase();
+      quantidadePorNome.set(nome, (quantidadePorNome.get(nome) ?? 0) + 1);
+    }
+
+    const idsParaManter = new Set<string>();
+    const nomesMantidos = new Set<string>();
+    for (const planta of plantas) {
+      const nome = planta.nomeArquivoOriginal.trim().toLocaleLowerCase();
+      if ((quantidadePorNome.get(nome) ?? 0) < 2) continue;
+      if (planta.id === plantaAtivaId) {
+        idsParaManter.add(planta.id);
+        nomesMantidos.add(nome);
+      }
+    }
+
+    const idsParaFechar = new Set<string>();
+    for (const planta of plantas) {
+      const nome = planta.nomeArquivoOriginal.trim().toLocaleLowerCase();
+      if ((quantidadePorNome.get(nome) ?? 0) < 2) continue;
+      if (idsParaManter.has(planta.id)) continue;
+      if (!nomesMantidos.has(nome)) {
+        nomesMantidos.add(nome);
+        idsParaManter.add(planta.id);
+      } else {
+        idsParaFechar.add(planta.id);
+      }
+    }
+
+    fecharPlantas(idsParaFechar);
+    if (idsParaFechar.size > 0) {
+      setMensagem(`${idsParaFechar.size} planta(s) repetida(s) fechada(s).`);
     }
   }
 
@@ -506,6 +810,15 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
     for (const s of SIMBOLOS_PADRAO) mapa.set(s.id, s);
     return mapa;
   }, []);
+
+  const quantidadeRepetidas = useMemo(() => {
+    const nomes = new Map<string, number>();
+    for (const planta of plantas) {
+      const nome = planta.nomeArquivoOriginal.trim().toLocaleLowerCase();
+      nomes.set(nome, (nomes.get(nome) ?? 0) + 1);
+    }
+    return [...nomes.values()].filter((quantidade) => quantidade > 1).length;
+  }, [plantas]);
 
   return (
     <div className="viewer">
@@ -529,8 +842,51 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
           </select>
         )}
 
-        <button type="button" className="botao-sugerir" onClick={handleSugerirAutomaticamente}>
-          ✨ Sugerir automaticamente
+        <button
+          type="button"
+          className="botao-sugerir"
+          onClick={handleSugerirAutomaticamente}
+          disabled={detectandoAmbientes || carregandoPdf}
+        >
+          {detectandoAmbientes
+            ? "Detectando ambientes…"
+            : questionario?.ambientes?.length
+              ? "Gerar pelo briefing"
+              : "✨ Sugerir automaticamente"}
+        </button>
+        {ambientesDetectados.some((ambiente) => ambiente.referencia) && (
+          <button type="button" onClick={handleAplicarReferencia}
+            disabled={detectandoAmbientes || carregandoPdf || !questionario}
+            title="Atualiza os itens dos ambientes calibrados desta planta conforme as referências aprovadas">
+            Aplicar referências da planta
+          </button>
+        )}
+        {onEditarBriefing && (
+          <>
+            <button type="button" onClick={() => onEditarBriefing(plantaAtiva, undefined, pontos)}>
+              {questionario?.ambientes?.length ? "Editar briefing" : "Configurar briefing"}
+            </button>
+            <button
+              type="button"
+              className={adicionandoAmbiente ? "botao-modo-ativo" : ""}
+              onClick={() => {
+                setAdicionandoAmbiente((atual) => !atual);
+                setMensagem(adicionandoAmbiente ? null : "Clique dentro do comodo que falta para cadastra-lo.");
+              }}
+              disabled={carregandoPdf}
+            >
+              {adicionandoAmbiente ? "Cancelar cadastro" : "Adicionar comodo na planta"}
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className="botao-limpar"
+          onClick={handleLimparSugestoes}
+          disabled={pontosDaPlantaAtiva.length === 0}
+          title="Remover todos os símbolos da planta ativa"
+        >
+          Limpar sugestões
         </button>
         <button type="button" onClick={handleSalvarVersao} disabled={salvando}>
           {salvando ? "Salvando…" : "Salvar versão"}
@@ -544,21 +900,38 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
       </header>
 
       <div className="planta-tabs">
-        {plantas.length > 1
-          ? plantas.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`planta-tab${p.id === plantaAtivaId ? " ativa" : ""}`}
-                onClick={() => setPlantaAtivaId(p.id)}
-              >
-                {p.nomeArquivoOriginal}
-              </button>
-            ))
-          : <span className="planta-tab ativa">{plantaAtiva.nomeArquivoOriginal}</span>}
+        {plantas.map((p) => (
+          <div key={p.id} className={`planta-tab planta-tab-container${p.id === plantaAtivaId ? " ativa" : ""}`}>
+            <button
+              type="button"
+              className="planta-tab-selecionar"
+              onClick={() => {
+                setPlantaAtivaId(p.id);
+                onPlantaAtivaChange?.(p.id);
+              }}
+              title={`Abrir ${p.nomeArquivoOriginal}`}
+            >
+              {p.nomeArquivoOriginal}
+            </button>
+            <button
+              type="button"
+              className="planta-tab-fechar"
+              onClick={() => handleFecharPlanta(p)}
+              aria-label={`Fechar ${p.nomeArquivoOriginal}`}
+              title="Fechar planta"
+            >
+              ×
+            </button>
+          </div>
+        ))}
         <button type="button" className="planta-tab planta-tab-add" onClick={() => inputPlantaRef.current?.click()}>
           + Planta
         </button>
+        {quantidadeRepetidas > 0 && (
+          <button type="button" className="planta-tab planta-tab-action" onClick={handleFecharRepetidas}>
+            Fechar repetidas
+          </button>
+        )}
         {ambientesDetectados.length > 0 && (
           <label className="toggle-ambientes">
             <input
@@ -612,7 +985,7 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            onPointerLeave={() => {
+            onPointerCancel={() => {
               arraste.current = null;
               cliqueCandidato.current = false;
             }}
@@ -637,7 +1010,10 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
                     <div
                       key={`${a.nome}-${i}`}
                       className="ambiente-marcador"
-                      style={{ left: a.posX, top: a.posY }}
+                      style={{
+                        left: percentualNoCanvas(a.posX, tamanhoCanvas.largura),
+                        top: percentualNoCanvas(a.posY, tamanhoCanvas.altura),
+                      }}
                       title={a.areaM2 ? `${a.nome} — ${a.areaM2}m²` : a.nome}
                     >
                       <span className="ambiente-rotulo">{a.nome}</span>
@@ -652,7 +1028,14 @@ export function EditorView({ projeto, plantaInicial, onVoltar }: Props) {
                   const selecionado = p.id === selecionadoId;
                   const titulo = [simbolo.nome, p.ambiente, p.observacao].filter(Boolean).join(" — ");
                   return (
-                    <div key={p.id} className="ponto-item" style={{ left: p.posX, top: p.posY }}>
+                    <div
+                      key={p.id}
+                      className="ponto-item"
+                      style={{
+                        left: percentualNoCanvas(p.posX, tamanhoCanvas.largura),
+                        top: percentualNoCanvas(p.posY, tamanhoCanvas.altura),
+                      }}
+                    >
                       <div className="ponto-forma-wrap" style={{ transform: `rotate(${p.rotacao}deg)` }}>
                         <div
                           className={`ponto-marcador ${simbolo.forma}${selecionado ? " selecionado" : ""}${p.precisaRevisar ? " precisa-revisar" : ""}`}

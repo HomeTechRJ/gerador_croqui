@@ -33,3 +33,8 @@ export function buscarProjeto(id: string): Projeto | undefined {
   const linha = db.prepare("SELECT * FROM projetos WHERE id = ?").get(id);
   return linha ? linhaParaProjeto(linha as Record<string, unknown>) : undefined;
 }
+
+export function excluirProjeto(id: string): boolean {
+  const resultado = db.prepare("DELETE FROM projetos WHERE id = ?").run(id);
+  return resultado.changes > 0;
+}

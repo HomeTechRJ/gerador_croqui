@@ -10,7 +10,8 @@
   "scripts": {
     "dev:web": "npm run dev -w apps/web",
     "dev:api": "npm run dev -w apps/api",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "test:referencia": "tsx --test scripts/referencia-quarto.test.ts"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
