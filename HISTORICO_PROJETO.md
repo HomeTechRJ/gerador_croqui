@@ -60,6 +60,11 @@ O posicionamento final enviado pelo usuário é:
 - Evidências locais: `artifacts/quarto-editor-validado.png` e `artifacts/quarto-exportado-validado.png`. A pasta é ignorada pelo Git por conter a planta do cliente.
 - Próximo passo: aceite visual do usuário para o quarto. Os demais cômodos continuam exigindo validação própria.
 
+## Correção da sobreposição UniFi/quadro
+
+- Quando o UniFi e o quadro de automação são configurados no mesmo ambiente, o editor evita que os símbolos ocupem exatamente o mesmo ponto.
+- O UniFi é deslocado apenas o necessário para continuar no ambiente e ficar visível, sem alterar o local semântico escolhido no briefing.
+
 ## Regra UniFi adicionada em 09/09/2026
 
 - Quando o UniFi for sugerido para o andar inteiro, o motor prioriza um ambiente identificado como hall, corredor, circulação, entrada, vestíbulo, foyer, distribuição, escada ou passagem.

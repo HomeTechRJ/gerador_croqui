@@ -103,6 +103,40 @@ function completarAmbientesDoBriefing(
   return [...ambientesDetectados, ...manuais];
 }
 
+function corrigirSobreposicaoUniFiQuadro(pontos: PontoLocal[]): PontoLocal[] {
+  const resultado = pontos.map((ponto) => ({ ...ponto }));
+  for (const ponto of resultado) {
+    if (ponto.simboloId !== "unifi-ap") continue;
+    const sobreposto = resultado.some(
+      (outro) =>
+        outro !== ponto &&
+        outro.plantaId === ponto.plantaId &&
+        outro.simboloId === "quadro-automacao" &&
+        Math.hypot(outro.posX - ponto.posX, outro.posY - ponto.posY) < 28
+    );
+    if (!sobreposto) continue;
+
+    const deslocamentos = [
+      { x: 48, y: 0 },
+      { x: -48, y: 0 },
+      { x: 0, y: 48 },
+      { x: 0, y: -48 },
+    ];
+    const novaPosicao = deslocamentos
+      .map((deslocamento) => ({ x: ponto.posX + deslocamento.x, y: ponto.posY + deslocamento.y }))
+      .find((candidato) =>
+        resultado.every(
+          (outro) => outro === ponto || Math.hypot(outro.posX - candidato.x, outro.posY - candidato.y) >= 28
+        )
+      );
+    if (novaPosicao) {
+      ponto.posX = novaPosicao.x;
+      ponto.posY = novaPosicao.y;
+    }
+  }
+  return resultado;
+}
+
 function percentualNoCanvas(valor: number, total: number): string {
   return total > 0 ? `${(valor / total) * 100}%` : "0%";
 }
@@ -571,7 +605,7 @@ export function EditorView({
         });
       }
     }
-    setPontos((atual) => [...atual, ...novos]);
+    setPontos((atual) => corrigirSobreposicaoUniFiQuadro([...atual, ...novos]));
 
     const totalSimbolos = novos.length;
     const qtdRevisar = novos.filter((s) => s.precisaRevisar).length;

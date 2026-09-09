@@ -42,6 +42,9 @@ try {
   assert.ok(mensagem.some((texto) => texto.includes('BRINQUEDOTECA') && texto.includes('Local ainda não identificado')));
   const quadroAntes = gerados.find((ponto) => ponto.titulo.includes('Quadro de automação'));
   assert.ok(quadroAntes);
+  const unifiAntes = gerados.find((ponto) => ponto.titulo.includes('Unifi AP'));
+  assert.ok(unifiAntes);
+  assert.ok(Math.hypot(unifiAntes.x - quadroAntes.x, unifiAntes.y - quadroAntes.y) >= 28);
   const caixasEscritorioAntes = gerados
     .filter((ponto) => ponto.titulo.includes('Caixa de embutir') && ponto.titulo.includes('ESCRITÓRIO'))
     .sort((a, b) => a.x - b.x);
