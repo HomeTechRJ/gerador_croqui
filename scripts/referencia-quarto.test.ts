@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import type { QuestionarioProjeto } from '@croqui/shared';
 import type { AmbienteDetectado } from '../apps/web/src/lib/detectarAmbientes';
 import { aplicarReferenciasDaPlanta } from '../apps/web/src/lib/referenciasPlanta';
-import { calcularPosicoesDaSugestao, sugerirParaAmbiente, sugerirPeloBriefing } from '../apps/web/src/lib/motorDeRegras';
+import { calcularPosicoesDaSugestao, sugerirParaAmbiente, sugerirParaAndar, sugerirPeloBriefing } from '../apps/web/src/lib/motorDeRegras';
 
 const hash = 'f8508c1fab627d343f4772613dd2ae735bd7a351e520b6a79f82f4a4fe242087';
 const viewport = (escala = 2) => ({
@@ -132,4 +132,18 @@ test('escritório recomenda três pontos: dois computadores e uma possível impr
   assert.equal(sugestao[0].simboloId, 'ponto-de-rede');
   assert.equal(sugestao[0].quantidade, 3);
   assert.match(sugestao[0].observacao ?? '', /computador.*impressora/);
+});
+
+test('UniFi prioriza hall ou corredor para ampliar a cobertura do andar', () => {
+  const limites = { minX: 0, minY: 0, maxX: 400, maxY: 400 };
+  const ambientes: AmbienteDetectado[] = [
+    { nome: 'SALA', areaM2: 30, posX: 200, posY: 200, limites, ancoras: [] },
+    { nome: 'HALL DO QUARTO', areaM2: 4.8, posX: 140, posY: 160, limites, ancoras: [] },
+    { nome: 'QUARTO', areaM2: 16, posX: 260, posY: 200, limites, ancoras: [] },
+  ];
+  const sugestao = sugerirParaAndar(ambientes, ['rede']).find((item) => item.simboloId === 'unifi-ap')!;
+
+  assert.deepEqual({ x: sugestao.posX, y: sugestao.posY }, { x: 140, y: 160 });
+  assert.match(sugestao.observacao ?? '', /priorizar circul/);
+  assert.deepEqual(calcularPosicoesDaSugestao(sugestao, ambientes), [{ x: 140, y: 160 }]);
 });

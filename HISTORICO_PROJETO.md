@@ -59,3 +59,10 @@ O posicionamento final enviado pelo usuário é:
 - O mesmo teste também abre **Editar briefing**, volta imediatamente para a planta e compara os pontos antes/depois. A API fica bloqueada para gravações durante o teste.
 - Evidências locais: `artifacts/quarto-editor-validado.png` e `artifacts/quarto-exportado-validado.png`. A pasta é ignorada pelo Git por conter a planta do cliente.
 - Próximo passo: aceite visual do usuário para o quarto. Os demais cômodos continuam exigindo validação própria.
+
+## Regra UniFi adicionada em 09/09/2026
+
+- Quando o UniFi for sugerido para o andar inteiro, o motor prioriza um ambiente identificado como hall, corredor, circulação, entrada, vestíbulo, foyer, distribuição, escada ou passagem.
+- A posição do ponto passa a ser o centro do ambiente de circulação escolhido, com confirmação visual de cobertura pelo projetista.
+- Se nenhum ambiente de circulação for detectado, o motor mantém o fallback no centro do conjunto principal e sinaliza a sugestão para revisão.
+- UniFi definido manualmente no briefing continua respeitando o local escolhido pelo usuário.

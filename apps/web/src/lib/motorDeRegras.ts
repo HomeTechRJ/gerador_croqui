@@ -43,6 +43,7 @@ interface ItemGerado {
 }
 
 const DISTANCIA_ENTRE_AMBIENTES_DO_MESMO_CONJUNTO = 360;
+const TERMOS_CIRCULACAO_AP = /(^| )(hall|corredor|circulacao|entrada|vestibulo|foyer|distribuicao|escada|passagem)($| )/;
 
 function distanciaEntre(a: AmbienteDetectado, b: AmbienteDetectado): number {
   return Math.hypot(a.posX - b.posX, a.posY - b.posY);
@@ -103,7 +104,16 @@ function limitesDoGrupo(ambientes: AmbienteDetectado[]): LimitesPlanta | undefin
     .sort((a, b) => (b.maxX - b.minX) * (b.maxY - b.minY) - (a.maxX - a.minX) * (a.maxY - a.minY))[0];
 }
 
+function escolherAmbientesDeCirculacaoParaAp(ambientes: AmbienteDetectado[]): AmbienteDetectado[] {
+  const grupoPrincipal = agruparAmbientes(ambientes)[0] ?? ambientes;
+  return grupoPrincipal
+    .filter((ambiente) => TERMOS_CIRCULACAO_AP.test(normalizar(ambiente.nome)))
+    .sort((a, b) => (b.areaM2 ?? 0) - (a.areaM2 ?? 0));
+}
+
 function escolherPosicaoDoAp(ambientes: AmbienteDetectado[]): { posX: number; posY: number } {
+  const circulacao = escolherAmbientesDeCirculacaoParaAp(ambientes)[0];
+  if (circulacao) return { posX: circulacao.posX, posY: circulacao.posY };
   const grupoPrincipal = agruparAmbientes(ambientes)[0] ?? ambientes;
   return centroDosAmbientes(grupoPrincipal);
 }
@@ -278,7 +288,12 @@ export function sugerirParaAndar(
       posX: posReferencia.posX,
       posY: posReferencia.posY,
       limites: limitesGrupoPrincipal,
-      observacao: `~${Math.round(areaTotal)}m² detectados no conjunto principal - confirmar posição de melhor cobertura`,
+      observacao: (() => {
+        const circulacao = escolherAmbientesDeCirculacaoParaAp(ambientes)[0];
+        return circulacao
+          ? `~${Math.round(areaTotal)}m² detectados no conjunto principal - priorizar circulação em "${circulacao.nome}"; confirmar cobertura`
+          : `~${Math.round(areaTotal)}m² detectados no conjunto principal - confirmar posição de melhor cobertura`;
+      })(),
       revisar: true,
     });
   }
@@ -438,6 +453,45 @@ function centroDaRegiao(regiao: LimitesPlanta): { x: number; y: number } {
     x: (regiao.minX + regiao.maxX) / 2,
     y: (regiao.minY + regiao.maxY) / 2,
   };
+}
+
+function escolherPosicoesDosAps(
+  ambientes: AmbienteDetectado[],
+  quantidade: number,
+  regiao?: LimitesPlanta
+): { x: number; y: number }[] {
+  const circulacoes = escolherAmbientesDeCirculacaoParaAp(ambientes);
+  const grupoPrincipal = agruparAmbientes(ambientes)[0] ?? ambientes;
+  const centro = grupoPrincipal.length > 0 ? centroDosAmbientes(grupoPrincipal) : undefined;
+  const base = circulacoes[0]
+    ? { x: circulacoes[0].posX, y: circulacoes[0].posY }
+    : regiao
+      ? centroDaRegiao(regiao)
+      : centro
+        ? { x: centro.posX, y: centro.posY }
+        : { x: 0, y: 0 };
+  const pontos: { x: number; y: number }[] = [];
+
+  for (const circulacao of circulacoes) {
+    if (pontos.length >= quantidade) break;
+    const ponto = limitarNaRegiao({ x: circulacao.posX, y: circulacao.posY }, regiao);
+    if (pontos.every((existente) => distanciaEntrePontos(existente, ponto) >= 36)) pontos.push(ponto);
+  }
+
+  const offsets = [
+    { x: 0, y: 0 },
+    { x: 72, y: 0 },
+    { x: -72, y: 0 },
+    { x: 0, y: 72 },
+    { x: 0, y: -72 },
+  ];
+  for (const offset of offsets) {
+    if (pontos.length >= quantidade) break;
+    const ponto = limitarNaRegiao({ x: base.x + offset.x, y: base.y + offset.y }, regiao);
+    if (pontos.every((existente) => distanciaEntrePontos(existente, ponto) >= 36)) pontos.push(ponto);
+  }
+
+  return pontos.slice(0, quantidade);
 }
 
 function limitarNaRegiao(posicao: { x: number; y: number }, regiao?: LimitesPlanta): { x: number; y: number } {
@@ -633,6 +687,9 @@ export function calcularPosicoesDaSugestao(
     return pontosReferencia.slice(0, sugestao.quantidade).map((ponto) => ({ ...ponto }));
   }
   const regiao = sugestao.limites ?? ambiente?.limites;
+  if (sugestao.simboloId === "unifi-ap" && sugestao.ambiente === "cobertura do andar" && !ambiente) {
+    return escolherPosicoesDosAps(ambientes, sugestao.quantidade, regiao);
+  }
   const zonaDoAmbiente = ambiente ? calcularZonaDoAmbiente(ambiente, ambientes, regiao) : regiao;
   const eSugestaoDoAndar = !ambiente;
   const rede = sugestao.simboloId === "ponto-de-rede";
