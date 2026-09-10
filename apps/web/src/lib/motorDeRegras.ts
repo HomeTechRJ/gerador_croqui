@@ -640,9 +640,7 @@ function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantid
   const largura = maxX - minX;
   const altura = maxY - minY;
   if (largura >= altura) {
-    const colunas = quantidade === 2
-      ? [minX + largura / 4, minX + (largura * 3) / 4]
-      : colunasDoQuarto(minX, largura, quantidade);
+    const colunas = colunasDoQuarto(minX, largura, quantidade);
     return colunas.map((x) => ({
       x,
       y: maxY,
@@ -650,8 +648,8 @@ function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantid
   }
   if (quantidade === 2) {
     return [
-      { x: maxX, y: minY + altura / 4 },
-      { x: maxX, y: minY + (altura * 3) / 4 },
+      { x: maxX, y: minY + altura / 3 },
+      { x: maxX, y: minY + (altura * 2) / 3 },
     ];
   }
   return Array.from({ length: quantidade }, (_, indice) => ({
@@ -683,9 +681,19 @@ function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: n
   const altura = maxY - minY;
 
   if (largura >= altura) {
-    return colunasDoQuarto(minX, largura, quantidade).map((x) => ({ x, y: minY }));
+    const centro = (minX + maxX) / 2;
+    const separacao = 14;
+    return Array.from({ length: quantidade }, (_, indice) => ({
+      x: centro + (indice - (quantidade - 1) / 2) * separacao,
+      y: minY,
+    }));
   }
-  return colunasDoQuarto(minY, altura, quantidade).map((y) => ({ x: minX, y }));
+  const centro = (minY + maxY) / 2;
+  const separacao = 14;
+  return Array.from({ length: quantidade }, (_, indice) => ({
+    x: minX,
+    y: centro + (indice - (quantidade - 1) / 2) * separacao,
+  }));
 }
 
 function posicoesSimetricasDeAudio(
@@ -705,14 +713,14 @@ function posicoesSimetricasDeAudio(
   if (!vertical && largura >= altura) {
     const y = (minY + maxY) / 2;
     return [
-      { x: minX + largura / 4, y },
-      { x: minX + (largura * 3) / 4, y },
+      { x: minX + largura / 3, y },
+      { x: minX + (largura * 2) / 3, y },
     ];
   }
   const x = (minX + maxX) / 2;
   return [
-    { x, y: minY + altura / 4 },
-    { x, y: minY + (altura * 3) / 4 },
+    { x, y: minY + altura / 3 },
+    { x, y: minY + (altura * 2) / 3 },
   ];
 }
 

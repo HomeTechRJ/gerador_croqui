@@ -48,7 +48,7 @@ test('quarto mantém caixas simétricas mesmo quando só uma âncora de cama é 
   assert.equal(pontos.length, 2);
   assert.equal(pontos[0].y, pontos[1].y);
   assert.equal(pontos[0].x + pontos[1].x, ambiente.posX * 2);
-  assert.ok(pontos[1].x - pontos[0].x > 80);
+  assert.ok(pontos[1].x - pontos[0].x > 40);
 });
 
 test('par de caixas em sala usa o mesmo eixo e fica simétrico', () => {
@@ -137,6 +137,22 @@ test('rede sem referência ou móvel identificado fica na parede interna da zona
   assert.ok(pontos.every((ponto) => ponto.x === 950));
   assert.ok(pontos.every((ponto) => ponto.x >= 950 && ponto.x <= 1100 && ponto.y >= 1800 && ponto.y <= 2000));
   assert.equal(posicionar('ponto-de-rede', 2, [quarto()]).length, 2);
+});
+
+test('rede agrupa os pontos lado a lado na mesma parede', () => {
+  const ambiente: AmbienteDetectado = {
+    ...quarto(),
+    nome: 'SALA DE ESTAR',
+    posX: 250,
+    posY: 200,
+    limites: { minX: 100, minY: 100, maxX: 400, maxY: 300 },
+    ancoras: [],
+    referencia: undefined,
+  };
+  const pontos = posicionar('ponto-de-rede', 2, [ambiente]);
+  assert.equal(pontos.length, 2);
+  assert.equal(pontos[0].y, pontos[1].y);
+  assert.equal(pontos[1].x - pontos[0].x, 14);
 });
 
 test('rede usa uma borda local com recuo mínimo, sem sair do cômodo', () => {

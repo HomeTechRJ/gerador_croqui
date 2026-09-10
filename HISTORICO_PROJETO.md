@@ -98,3 +98,8 @@ O posicionamento final enviado pelo usuário é:
 
 - A tentativa de usar a borda completa da prancha foi revertida porque podia colocar o ponto fora do ambiente.
 - A rede agora mantém a zona local protegida pelo rótulo e pelos vizinhos, usando a própria borda estimada como ponto de ancoragem, sem recuo adicional.
+
+## Calibração do quarto - 10/09/2026
+
+- Pontos de rede sem móvel de apoio ficam agrupados na mesma parede, lado a lado, com separação curta entre os marcadores.
+- Duas caixas de som passam a ocupar os terços do vão útil do cômodo: 1/3 e 2/3 entre as paredes, mantendo simetria.
