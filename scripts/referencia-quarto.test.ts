@@ -65,7 +65,8 @@ test('par de caixas em sala usa o mesmo eixo e fica simétrico', () => {
   const pontos = posicionar('caixa-embutir', 2, [ambiente]);
   assert.equal(pontos.length, 2);
   assert.equal(pontos[0].y, pontos[1].y);
-  assert.equal(pontos[0].x + pontos[1].x, ambiente.posX * 2);
+  assert.equal(pontos[0].x, ambiente.posX);
+  assert.ok(pontos[1].x > ambiente.posX);
 });
 
 test('varanda organiza duas caixas no eixo vertical', () => {

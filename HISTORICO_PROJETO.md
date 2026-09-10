@@ -107,4 +107,5 @@ O posicionamento final enviado pelo usuário é:
 ## Centralização do quarto e contato com a parede - 10/09/2026
 
 - O par de caixas do quarto usa o centro do ambiente detectado com uma correção de um sexto do vão útil, compensando o deslocamento recorrente do rótulo em relação às paredes e mantendo as caixas simétricas no cômodo.
+- A mesma correção de centro e a divisão em 1/3 e 2/3 passam a valer para pares de áudio em salas, jantar, gourmet e demais ambientes sem referência específica.
 - A rede agrupada é projetada para a linha arquitetônica da parede, compensando a folga da região detectada em células, sem perder a proteção de localização do cômodo.
