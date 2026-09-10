@@ -115,6 +115,10 @@ app.post("/plantas", async (request, reply) => {
       await converterDwgParaDxf(caminhoOriginal, plantaId);
       planta = { ...planta, status: "pronta", formatoExibicao: "dxf" };
     } catch (err) {
+      request.log.error(
+        { err, plantaId, nomeArquivo: arquivo.filename },
+        "Falha ao converter DWG"
+      );
       planta = {
         ...planta,
         status: "erro_conversao",
