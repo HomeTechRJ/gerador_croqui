@@ -37,6 +37,33 @@ test('duas caixas nos pés das camas, junto às extremidades superiores, mesmo s
   }
 });
 
+test('quarto mantém caixas simétricas mesmo quando só uma âncora de cama é lida', () => {
+  const ambiente: AmbienteDetectado = {
+    ...quarto(),
+    limites: { minX: 100, minY: 100, maxX: 500, maxY: 300 },
+    ancoras: [{ texto: 'cama', posX: 180, posY: 190, prioridade: 3 }],
+    referencia: undefined,
+  };
+  const pontos = posicionar('caixa-embutir', 2, [ambiente]);
+  assert.equal(pontos.length, 2);
+  assert.equal(pontos[0].y, pontos[1].y);
+  assert.equal(pontos[0].x + pontos[1].x, 600);
+});
+
+test('par de caixas em sala usa o mesmo eixo e fica simétrico', () => {
+  const ambiente: AmbienteDetectado = {
+    ...quarto(),
+    nome: 'SALA DE ESTAR',
+    limites: { minX: 100, minY: 100, maxX: 500, maxY: 300 },
+    ancoras: [],
+    referencia: undefined,
+  };
+  const pontos = posicionar('caixa-embutir', 2, [ambiente]);
+  assert.equal(pontos.length, 2);
+  assert.equal(pontos[0].y, pontos[1].y);
+  assert.equal(pontos[0].x + pontos[1].x, 600);
+});
+
 test('rede agrupada na estante superior, não no centro nem no contorno estimado', () => {
   const pontos = posicionar('ponto-de-rede', 2);
   assert.equal(pontos.length, 2);
@@ -86,10 +113,14 @@ test('honra zero e não inventa posições excedentes à referência', () => {
   assert.equal(posicionar('ponto-de-rede', 4).length, 2);
 });
 
-test('rede sem referência ou móvel identificado fica pendente em vez de flutuar fora da planta', () => {
+test('rede sem referência ou móvel identificado fica na parede interna da zona', () => {
   const brinquedoteca = { ...quarto(), nome: 'BRINQUEDOTECA' };
-  assert.deepEqual(posicionar('ponto-de-rede', 2, [brinquedoteca]), []);
-  assert.deepEqual(posicionar('ponto-de-rede', 2, [quarto()]), []);
+  const pontos = posicionar('ponto-de-rede', 2, [brinquedoteca]);
+  assert.equal(pontos.length, 2);
+  assert.ok(pontos[0].x === pontos[1].x || pontos[0].y === pontos[1].y);
+  assert.ok(pontos[0].x !== pontos[1].x || pontos[0].y !== pontos[1].y);
+  assert.ok(pontos.every((ponto) => ponto.x >= 974 && ponto.x <= 1076 && ponto.y >= 1824 && ponto.y <= 1976));
+  assert.equal(posicionar('ponto-de-rede', 2, [quarto()]).length, 2);
 });
 
 test('escritório usa três referências na bancada: dois computadores e uma possível impressora', () => {

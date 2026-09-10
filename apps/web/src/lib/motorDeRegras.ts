@@ -612,40 +612,6 @@ function ancorasDeRede(ambiente?: AmbienteDetectado): AncoraAmbiente[] {
     .sort((a, b) => b.prioridade - a.prioridade);
 }
 
-function ancorasDeCama(ambiente?: AmbienteDetectado): AncoraAmbiente[] {
-  return [...(ambiente?.ancoras ?? [])]
-    .filter((ancora) => /cama/i.test(ancora.texto))
-    .sort((a, b) =>
-      Math.hypot(a.posX - (ambiente?.posX ?? a.posX), a.posY - (ambiente?.posY ?? a.posY)) -
-      Math.hypot(b.posX - (ambiente?.posX ?? b.posX), b.posY - (ambiente?.posY ?? b.posY))
-    );
-}
-
-function posicaoNosPesDaCama(
-  cama: AncoraAmbiente,
-  regiao: LimitesPlanta | undefined,
-  indice: number
-): { x: number; y: number } {
-  if (!regiao) {
-    return { x: cama.posX + (indice % 2 === 0 ? -24 : 24), y: cama.posY + 72 };
-  }
-
-  const distanciaEsquerda = cama.posX - regiao.minX;
-  const distanciaDireita = regiao.maxX - cama.posX;
-  const distanciaTopo = cama.posY - regiao.minY;
-  const distanciaBase = regiao.maxY - cama.posY;
-  const menorDistancia = Math.min(distanciaEsquerda, distanciaDireita, distanciaTopo, distanciaBase);
-  const deslocamento = Math.min(96, Math.max(52, Math.min(regiao.maxX - regiao.minX, regiao.maxY - regiao.minY) * 0.28));
-  let posicao = { x: cama.posX, y: cama.posY + deslocamento };
-
-  if (menorDistancia === distanciaEsquerda) posicao = { x: cama.posX + deslocamento, y: cama.posY };
-  else if (menorDistancia === distanciaDireita) posicao = { x: cama.posX - deslocamento, y: cama.posY };
-  else if (menorDistancia === distanciaTopo) posicao = { x: cama.posX, y: cama.posY + deslocamento };
-  else posicao = { x: cama.posX, y: cama.posY - deslocamento };
-
-  return limitarNaRegiao(posicao, regiao);
-}
-
 function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantidade: number): { x: number; y: number }[] {
   if (!regiao) return [];
   const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
@@ -669,6 +635,55 @@ function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantid
 
 function colunasDoQuarto(minX: number, largura: number, quantidade: number): number[] {
   return Array.from({ length: quantidade }, (_, indice) => minX + largura * ((indice + 1) / (quantidade + 1)));
+}
+
+/**
+ * Sem uma ancora textual (mesa, rack, estante etc.), a rede ainda precisa ser
+ * sugerida. Nesse caso usamos a parede interna mais longa da zona estimada,
+ * distribuindo os pontos de forma simetrica. E uma posicao revisavel, mas nao
+ * deixa o item flutuando no meio do comodo nem some com a quantidade pedida.
+ */
+function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: number): { x: number; y: number }[] {
+  if (!regiao || quantidade <= 0) return [];
+  const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
+  const minX = regiao.minX + margem;
+  const maxX = regiao.maxX - margem;
+  const minY = regiao.minY + margem;
+  const maxY = regiao.maxY - margem;
+  const largura = maxX - minX;
+  const altura = maxY - minY;
+
+  if (largura >= altura) {
+    return colunasDoQuarto(minX, largura, quantidade).map((x) => ({ x, y: minY }));
+  }
+  return colunasDoQuarto(minY, altura, quantidade).map((y) => ({ x: minX, y }));
+}
+
+function posicoesSimetricasDeAudio(
+  regiao: LimitesPlanta | undefined,
+  quantidade: number
+): { x: number; y: number }[] {
+  if (!regiao || quantidade !== 2) return [];
+  const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
+  const minX = regiao.minX + margem;
+  const maxX = regiao.maxX - margem;
+  const minY = regiao.minY + margem;
+  const maxY = regiao.maxY - margem;
+  const largura = maxX - minX;
+  const altura = maxY - minY;
+
+  if (largura >= altura) {
+    const y = (minY + maxY) / 2;
+    return [
+      { x: minX + largura / 3, y },
+      { x: minX + (largura * 2) / 3, y },
+    ];
+  }
+  const x = (minX + maxX) / 2;
+  return [
+    { x, y: minY + altura / 3 },
+    { x, y: minY + (altura * 2) / 3 },
+  ];
 }
 
 
@@ -720,19 +735,24 @@ export function calcularPosicoesDaSugestao(
   const ancoraDeUso = ancorasRede[0];
 
   if (ehQuarto(ambiente) && (sugestao.simboloId === "caixa-embutir" || sugestao.simboloId === "caixa-embutir-bluetooth")) {
-    const camas = ancorasDeCama(ambiente);
-    const pontos = camas
-      .slice(0, sugestao.quantidade)
-      .map((cama, indice) => posicaoNosPesDaCama(cama, zonaDoAmbiente, indice));
-    const fallback = posicoesFallbackDosPesDaCama(zonaDoAmbiente, sugestao.quantidade)
-      .filter((ponto) => pontos.every((existente) => distanciaEntrePontos(existente, ponto) >= 24));
+    // Um unico texto de cama detectado de forma parcial nao e evidencia
+    // suficiente para escolher um lado do quarto. A distribuicao geometrica
+    // garante que as caixas dos quartos permaneçam simetricas.
+    const fallback = posicoesFallbackDosPesDaCama(zonaDoAmbiente, sugestao.quantidade);
+    if (fallback.length >= sugestao.quantidade) return fallback.slice(0, sugestao.quantidade);
     const fallbackSemRegiao = Array.from({ length: sugestao.quantidade }, (_, indice) => ({
       x: sugestao.posX + (indice % 2 === 0 ? -36 : 36),
       y: sugestao.posY + 72 + Math.floor(indice / 2) * 24,
     }));
-    return [...pontos, ...fallback, ...fallbackSemRegiao]
-      .filter((ponto, indice, lista) => lista.findIndex((item) => distanciaEntrePontos(item, ponto) < 1) === indice)
-      .slice(0, sugestao.quantidade);
+    return fallbackSemRegiao.slice(0, sugestao.quantidade);
+  }
+
+  if (
+    sugestao.simboloId === "caixa-embutir" ||
+    sugestao.simboloId === "caixa-embutir-bluetooth"
+  ) {
+    const pontosSimetricos = posicoesSimetricasDeAudio(zonaDoAmbiente ?? regiao, sugestao.quantidade);
+    if (pontosSimetricos.length === sugestao.quantidade) return pontosSimetricos;
   }
 
   if (rede && ancorasRede.length > 0) {
@@ -757,9 +777,9 @@ export function calcularPosicoesDaSugestao(
     return pontos.slice(0, sugestao.quantidade);
   }
 
-  // O contorno estimado do desenho nao comprova uma parede nem um movel.
-  // Sem apoio identificado, o editor informa a quantidade pendente.
-  if (rede) return [];
+  if (rede) {
+    return posicoesFallbackDeRede(zonaDoAmbiente ?? regiao, sugestao.quantidade);
+  }
   const ancora = ancoraDeUso
     ? { x: ancoraDeUso.posX, y: ancoraDeUso.posY }
     : eSugestaoDoAndar && regiao
