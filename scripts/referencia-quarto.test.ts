@@ -134,9 +134,25 @@ test('rede sem referência ou móvel identificado fica na parede interna da zona
   assert.equal(pontos.length, 2);
   assert.ok(pontos[0].x === pontos[1].x || pontos[0].y === pontos[1].y);
   assert.ok(pontos[0].x !== pontos[1].x || pontos[0].y !== pontos[1].y);
-  assert.ok(pontos.every((ponto) => ponto.x === 974));
-  assert.ok(pontos.every((ponto) => ponto.x >= 974 && ponto.x <= 1076 && ponto.y >= 1824 && ponto.y <= 1976));
+  assert.ok(pontos.every((ponto) => ponto.x === 950));
+  assert.ok(pontos.every((ponto) => ponto.x >= 950 && ponto.x <= 1100 && ponto.y >= 1800 && ponto.y <= 2000));
   assert.equal(posicionar('ponto-de-rede', 2, [quarto()]).length, 2);
+});
+
+test('rede sem móvel usa a borda completa da zona, sem recuo inicial', () => {
+  const ambiente: AmbienteDetectado = {
+    ...quarto(),
+    nome: 'SALA DE ESTAR',
+    posX: 300,
+    posY: 300,
+    limites: { minX: 100, minY: 100, maxX: 500, maxY: 500 },
+    ancoras: [],
+    referencia: undefined,
+  };
+  const pontos = posicionar('ponto-de-rede', 2, [ambiente]);
+  assert.equal(pontos.length, 2);
+  assert.equal(pontos[0].y, 100);
+  assert.equal(pontos[1].y, 100);
 });
 
 test('escritório usa três referências na bancada: dois computadores e uma possível impressora', () => {

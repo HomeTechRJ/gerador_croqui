@@ -531,11 +531,14 @@ function pontoDentroDaRegiao(posicao: { x: number; y: number }, regiao?: Limites
 function calcularZonaDoAmbiente(
   ambiente: AmbienteDetectado,
   ambientes: AmbienteDetectado[],
-  regiao?: LimitesPlanta
+  regiao?: LimitesPlanta,
+  semMargemInicial = false
 ): LimitesPlanta | undefined {
   if (!regiao) return undefined;
 
-  const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
+  const margem = semMargemInicial
+    ? 0
+    : Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
   let minX = regiao.minX + margem;
   let minY = regiao.minY + margem;
   let maxX = regiao.maxX - margem;
@@ -571,20 +574,25 @@ function calcularZonaDoAmbiente(
     }
     return { minimo: inicio, maximo: fim };
   };
-  const intervaloX = limitarIntervalo(minX, maxX, ambiente.posX, 480);
-  const intervaloY = limitarIntervalo(minY, maxY, ambiente.posY, 240);
-  minX = intervaloX.minimo;
-  maxX = intervaloX.maximo;
-  minY = intervaloY.minimo;
-  maxY = intervaloY.maximo;
+  if (!semMargemInicial) {
+    const intervaloX = limitarIntervalo(minX, maxX, ambiente.posX, 480);
+    const intervaloY = limitarIntervalo(minY, maxY, ambiente.posY, 240);
+    minX = intervaloX.minimo;
+    maxX = intervaloX.maximo;
+    minY = intervaloY.minimo;
+    maxY = intervaloY.maximo;
+  }
 
-  // Mesmo uma regiao local pode conter a borda da folha ou um carimbo. Nao
-  // permitimos que uma parede estimada fique muito distante do proprio rotulo
-  // do comodo quando o detector nao conseguiu separar as paredes internas.
-  minX = Math.max(minX, ambiente.posX - 180);
-  maxX = Math.min(maxX, ambiente.posX + 180);
-  minY = Math.max(minY, ambiente.posY - 120);
-  maxY = Math.min(maxY, ambiente.posY + 120);
+  // Para rede, a borda completa e a referencia desejada: nao a recortamos
+  // pela distancia do rotulo, pois o rotulo costuma ficar no centro e a
+  // parede pode estar mais distante. As demais regras continuam protegidas
+  // contra bordas de pagina ou carimbo muito afastadas.
+  if (!semMargemInicial) {
+    minX = Math.max(minX, ambiente.posX - 180);
+    maxX = Math.min(maxX, ambiente.posX + 180);
+    minY = Math.max(minY, ambiente.posY - 120);
+    maxY = Math.min(maxY, ambiente.posY + 120);
+  }
 
   if (maxX - minX >= 72 && maxY - minY >= 72) return { minX, minY, maxX, maxY };
 
@@ -755,9 +763,11 @@ export function calcularPosicoesDaSugestao(
   if (sugestao.simboloId === "unifi-ap" && sugestao.ambiente === "cobertura do andar" && !ambiente) {
     return escolherPosicoesDosAps(ambientes, sugestao.quantidade, regiao);
   }
-  const zonaDoAmbiente = ambiente ? calcularZonaDoAmbiente(ambiente, ambientes, regiao) : regiao;
-  const eSugestaoDoAndar = !ambiente;
   const rede = sugestao.simboloId === "ponto-de-rede";
+  const zonaDoAmbiente = ambiente
+    ? calcularZonaDoAmbiente(ambiente, ambientes, regiao, rede)
+    : regiao;
+  const eSugestaoDoAndar = !ambiente;
   const ancorasRede = rede ? ancorasDeRede(ambiente) : [];
   const ancoraDeUso = ancorasRede[0];
 
