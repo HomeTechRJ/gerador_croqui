@@ -97,4 +97,4 @@ O posicionamento final enviado pelo usuário é:
 ## Rede alinhada sem sair do cômodo - 10/09/2026
 
 - A tentativa de usar a borda completa da prancha foi revertida porque podia colocar o ponto fora do ambiente.
-- A rede agora mantém a zona local protegida pelo rótulo e pelos vizinhos, usando apenas um recuo mínimo de 8 px para aproximar o marcador da parede sem desalinhá-lo.
+- A rede agora mantém a zona local protegida pelo rótulo e pelos vizinhos, usando a própria borda estimada como ponto de ancoragem, sem recuo adicional.

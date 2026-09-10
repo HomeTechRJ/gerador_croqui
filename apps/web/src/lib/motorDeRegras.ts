@@ -537,7 +537,7 @@ function calcularZonaDoAmbiente(
   if (!regiao) return undefined;
 
   const margem = semMargemInicial
-    ? Math.min(8, (regiao.maxX - regiao.minX) / 10, (regiao.maxY - regiao.minY) / 10)
+    ? 0
     : Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
   let minX = regiao.minX + margem;
   let minY = regiao.minY + margem;
