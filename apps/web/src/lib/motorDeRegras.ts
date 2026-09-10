@@ -646,7 +646,7 @@ function posicoesFallbackDosPesDaCama(
   if (largura >= altura) {
     const centro = centroPreferencialX === undefined
       ? (minX + maxX) / 2
-      : Math.min(maxX, Math.max(minX, centroPreferencialX));
+      : Math.min(maxX, Math.max(minX, centroPreferencialX + largura / 6));
     const colunas = quantidade === 2
       ? [
           Math.max(minX, centro - largura / 6),

@@ -106,5 +106,5 @@ O posicionamento final enviado pelo usuário é:
 
 ## Centralização do quarto e contato com a parede - 10/09/2026
 
-- O par de caixas do quarto usa o centro do ambiente detectado como correção da zona rasterizada, mantendo a simetria quando a área detectada fica deslocada em relação às paredes.
+- O par de caixas do quarto usa o centro do ambiente detectado com uma correção de um sexto do vão útil, compensando o deslocamento recorrente do rótulo em relação às paredes e mantendo as caixas simétricas no cômodo.
 - A rede agrupada é projetada para a linha arquitetônica da parede, compensando a folga da região detectada em células, sem perder a proteção de localização do cômodo.
