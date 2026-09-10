@@ -47,7 +47,7 @@ test('quarto mantém caixas simétricas mesmo quando só uma âncora de cama é 
   const pontos = posicionar('caixa-embutir', 2, [ambiente]);
   assert.equal(pontos.length, 2);
   assert.equal(pontos[0].y, pontos[1].y);
-  assert.equal(pontos[0].x + pontos[1].x, 600);
+  assert.equal(pontos[0].x + pontos[1].x, ambiente.posX * 2);
 });
 
 test('par de caixas em sala usa o mesmo eixo e fica simétrico', () => {
@@ -61,7 +61,21 @@ test('par de caixas em sala usa o mesmo eixo e fica simétrico', () => {
   const pontos = posicionar('caixa-embutir', 2, [ambiente]);
   assert.equal(pontos.length, 2);
   assert.equal(pontos[0].y, pontos[1].y);
-  assert.equal(pontos[0].x + pontos[1].x, 600);
+  assert.equal(pontos[0].x + pontos[1].x, ambiente.posX * 2);
+});
+
+test('varanda organiza duas caixas no eixo vertical', () => {
+  const ambiente: AmbienteDetectado = {
+    ...quarto(),
+    nome: 'VARANDA',
+    limites: { minX: 100, minY: 100, maxX: 500, maxY: 300 },
+    ancoras: [],
+    referencia: undefined,
+  };
+  const pontos = posicionar('caixa-embutir', 2, [ambiente]);
+  assert.equal(pontos.length, 2);
+  assert.equal(pontos[0].x, pontos[1].x);
+  assert.equal(pontos[0].y + pontos[1].y, ambiente.posY * 2);
 });
 
 test('rede agrupada na estante superior, não no centro nem no contorno estimado', () => {
@@ -114,7 +128,7 @@ test('honra zero e não inventa posições excedentes à referência', () => {
 });
 
 test('rede sem referência ou móvel identificado fica na parede interna da zona', () => {
-  const brinquedoteca = { ...quarto(), nome: 'BRINQUEDOTECA' };
+  const brinquedoteca = { ...quarto(), nome: 'BRINQUEDOTECA', posX: 1020, posY: 1900 };
   const pontos = posicionar('ponto-de-rede', 2, [brinquedoteca]);
   assert.equal(pontos.length, 2);
   assert.ok(pontos[0].x === pontos[1].x || pontos[0].y === pontos[1].y);

@@ -81,3 +81,10 @@ O posicionamento final enviado pelo usuário é:
 - A prancha **PONTOS ELÉTRICOS - REV 00 - 24.06.26 - EVELINE E BRUNO** foi analisada: suas duas páginas são pranchas elétricas/luminotécnicas e não trazem nomes de cômodos no texto ou na imagem principal.
 - O detector agora tenta OCR também quando o PDF possui texto parcial, como legendas, mas não encontrou ambientes. Quando a própria prancha não informa os nomes, o app não deve inventar cômodos.
 - Para esse tipo de arquivo, o fluxo correto é cadastrar os cômodos manualmente pelo botão **Adicionar cômodo na planta**, ou importar a planta arquitetônica que contenha os rótulos.
+
+## Regras de posicionamento de rede e áudio - 10/09/2026
+
+- Pontos de rede sem uma referência de mesa, bancada, estante ou equipamento devem ficar na parede interna da zona do cômodo, com apenas uma pequena margem para manter o marcador visível.
+- O cálculo de zona não pode usar a prancha inteira como fallback: áudio e rede permanecem em uma área local do cômodo identificado.
+- Duas caixas de som em quartos continuam simétricas; em varanda, sacada, terraço ou jardim, o par fica alinhado no eixo vertical.
+- A planta arquitetônica de Eveline e Bruno foi usada na validação visual dessas regras. Foram adicionados testes automatizados para a varanda e para o fallback de rede na parede.

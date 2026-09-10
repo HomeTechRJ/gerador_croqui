@@ -581,12 +581,22 @@ function calcularZonaDoAmbiente(
   // Mesmo uma regiao local pode conter a borda da folha ou um carimbo. Nao
   // permitimos que uma parede estimada fique muito distante do proprio rotulo
   // do comodo quando o detector nao conseguiu separar as paredes internas.
-  minX = Math.max(minX, ambiente.posX - 240);
-  maxX = Math.min(maxX, ambiente.posX + 240);
+  minX = Math.max(minX, ambiente.posX - 180);
+  maxX = Math.min(maxX, ambiente.posX + 180);
   minY = Math.max(minY, ambiente.posY - 120);
   maxY = Math.min(maxY, ambiente.posY + 120);
 
-  return maxX - minX >= 72 && maxY - minY >= 72 ? { minX, minY, maxX, maxY } : regiao;
+  if (maxX - minX >= 72 && maxY - minY >= 72) return { minX, minY, maxX, maxY };
+
+  // Se os rótulos vizinhos produziram uma interseção estreita ou inválida,
+  // nunca devolvemos a região inteira da prancha. Um retângulo local centrado
+  // no rótulo mantém áudio e rede dentro do cômodo mais provável.
+  return {
+    minX: ambiente.posX - 120,
+    minY: ambiente.posY - 80,
+    maxX: ambiente.posX + 120,
+    maxY: ambiente.posY + 80,
+  };
 }
 
 function distanciaDaBorda(posicao: { x: number; y: number }, regiao?: LimitesPlanta): number {
@@ -603,6 +613,11 @@ function ehQuarto(ambiente?: AmbienteDetectado): boolean {
   if (!ambiente) return false;
   const nome = normalizar(ambiente.nome);
   return (/quarto|dormitorio|suite/.test(nome)) && !/closet|banho|banheiro/.test(nome);
+}
+
+function ehVaranda(ambiente?: AmbienteDetectado): boolean {
+  if (!ambiente) return false;
+  return /varanda|sacada|terraco|jardim/.test(normalizar(ambiente.nome));
 }
 
 
@@ -645,7 +660,10 @@ function colunasDoQuarto(minX: number, largura: number, quantidade: number): num
  */
 function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: number): { x: number; y: number }[] {
   if (!regiao || quantidade <= 0) return [];
-  const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
+  // O centro do marcador deve coincidir com a parede. Uma pequena margem
+  // interna evita que o quadrado fique completamente para fora quando a
+  // borda foi estimada a partir do desenho rasterizado.
+  const margem = Math.min(8, (regiao.maxX - regiao.minX) / 10, (regiao.maxY - regiao.minY) / 10);
   const minX = regiao.minX + margem;
   const maxX = regiao.maxX - margem;
   const minY = regiao.minY + margem;
@@ -661,7 +679,8 @@ function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: n
 
 function posicoesSimetricasDeAudio(
   regiao: LimitesPlanta | undefined,
-  quantidade: number
+  quantidade: number,
+  vertical = false
 ): { x: number; y: number }[] {
   if (!regiao || quantidade !== 2) return [];
   const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
@@ -672,7 +691,7 @@ function posicoesSimetricasDeAudio(
   const largura = maxX - minX;
   const altura = maxY - minY;
 
-  if (largura >= altura) {
+  if (!vertical && largura >= altura) {
     const y = (minY + maxY) / 2;
     return [
       { x: minX + largura / 3, y },
@@ -751,7 +770,11 @@ export function calcularPosicoesDaSugestao(
     sugestao.simboloId === "caixa-embutir" ||
     sugestao.simboloId === "caixa-embutir-bluetooth"
   ) {
-    const pontosSimetricos = posicoesSimetricasDeAudio(zonaDoAmbiente ?? regiao, sugestao.quantidade);
+    const pontosSimetricos = posicoesSimetricasDeAudio(
+      zonaDoAmbiente ?? regiao,
+      sugestao.quantidade,
+      ehVaranda(ambiente)
+    );
     if (pontosSimetricos.length === sugestao.quantidade) return pontosSimetricos;
   }
 
