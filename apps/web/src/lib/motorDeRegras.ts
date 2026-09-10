@@ -715,8 +715,7 @@ function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: n
 function posicoesSimetricasDeAudio(
   regiao: LimitesPlanta | undefined,
   quantidade: number,
-  vertical = false,
-  centroPreferencialX?: number
+  vertical = false
 ): { x: number; y: number }[] {
   if (!regiao || quantidade !== 2) return [];
   const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
@@ -728,13 +727,10 @@ function posicoesSimetricasDeAudio(
   const altura = maxY - minY;
 
   if (!vertical && largura >= altura) {
-    const centro = centroPreferencialX === undefined
-      ? (minX + maxX) / 2
-      : Math.min(maxX, Math.max(minX, centroPreferencialX + largura / 6));
     const y = (minY + maxY) / 2;
     return [
-      { x: Math.max(minX, centro - largura / 6), y },
-      { x: Math.min(maxX, centro + largura / 6), y },
+      { x: minX + largura / 3, y },
+      { x: minX + (largura * 2) / 3, y },
     ];
   }
   const x = (minX + maxX) / 2;
@@ -814,8 +810,7 @@ export function calcularPosicoesDaSugestao(
     const pontosSimetricos = posicoesSimetricasDeAudio(
       zonaDoAmbiente ?? regiao,
       sugestao.quantidade,
-      ehVaranda(ambiente),
-      ambiente?.posX
+      ehVaranda(ambiente)
     );
     if (pontosSimetricos.length === sugestao.quantidade) return pontosSimetricos;
   }
