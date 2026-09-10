@@ -630,7 +630,11 @@ function ancorasDeRede(ambiente?: AmbienteDetectado): AncoraAmbiente[] {
     .sort((a, b) => b.prioridade - a.prioridade);
 }
 
-function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantidade: number): { x: number; y: number }[] {
+function posicoesFallbackDosPesDaCama(
+  regiao: LimitesPlanta | undefined,
+  quantidade: number,
+  centroPreferencialX?: number
+): { x: number; y: number }[] {
   if (!regiao) return [];
   const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
   const minX = regiao.minX + margem;
@@ -640,7 +644,15 @@ function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantid
   const largura = maxX - minX;
   const altura = maxY - minY;
   if (largura >= altura) {
-    const colunas = colunasDoQuarto(minX, largura, quantidade);
+    const centro = centroPreferencialX === undefined
+      ? (minX + maxX) / 2
+      : Math.min(maxX, Math.max(minX, centroPreferencialX));
+    const colunas = quantidade === 2
+      ? [
+          Math.max(minX, centro - largura / 6),
+          Math.min(maxX, centro + largura / 6),
+        ]
+      : colunasDoQuarto(minX, largura, quantidade);
     return colunas.map((x) => ({
       x,
       y: maxY,
@@ -679,19 +691,23 @@ function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: n
   const maxY = regiao.maxY - margem;
   const largura = maxX - minX;
   const altura = maxY - minY;
+  // A região detectada vem do agrupamento em células de 36 px e costuma
+  // terminar alguns pixels antes da linha arquitetônica. Projetamos o centro
+  // do marcador até essa linha, mantendo o agrupamento curto dos pontos.
+  const deslocamentoAteParede = Math.min(24, Math.max(0, Math.min(largura, altura) / 8));
 
   if (largura >= altura) {
     const centro = (minX + maxX) / 2;
     const separacao = 14;
     return Array.from({ length: quantidade }, (_, indice) => ({
       x: centro + (indice - (quantidade - 1) / 2) * separacao,
-      y: minY,
+      y: minY - deslocamentoAteParede,
     }));
   }
   const centro = (minY + maxY) / 2;
   const separacao = 14;
   return Array.from({ length: quantidade }, (_, indice) => ({
-    x: minX,
+    x: minX - deslocamentoAteParede,
     y: centro + (indice - (quantidade - 1) / 2) * separacao,
   }));
 }
@@ -778,7 +794,7 @@ export function calcularPosicoesDaSugestao(
     // Um unico texto de cama detectado de forma parcial nao e evidencia
     // suficiente para escolher um lado do quarto. A distribuicao geometrica
     // garante que as caixas dos quartos permaneçam simetricas.
-    const fallback = posicoesFallbackDosPesDaCama(zonaDoAmbiente, sugestao.quantidade);
+    const fallback = posicoesFallbackDosPesDaCama(zonaDoAmbiente, sugestao.quantidade, ambiente?.posX);
     if (fallback.length >= sugestao.quantidade) return fallback.slice(0, sugestao.quantidade);
     const fallbackSemRegiao = Array.from({ length: sugestao.quantidade }, (_, indice) => ({
       x: sugestao.posX + (indice % 2 === 0 ? -36 : 36),

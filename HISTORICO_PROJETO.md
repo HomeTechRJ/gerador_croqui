@@ -103,3 +103,8 @@ O posicionamento final enviado pelo usuário é:
 
 - Pontos de rede sem móvel de apoio ficam agrupados na mesma parede, lado a lado, com separação curta entre os marcadores.
 - Duas caixas de som passam a ocupar os terços do vão útil do cômodo: 1/3 e 2/3 entre as paredes, mantendo simetria.
+
+## Centralização do quarto e contato com a parede - 10/09/2026
+
+- O par de caixas do quarto usa o centro do rótulo/ambiente como referência para não ficar deslocado para um lado quando a zona rasterizada estiver assimétrica.
+- A rede agrupada é projetada para a linha arquitetônica da parede, compensando a folga da região detectada em células, sem perder a proteção de localização do cômodo.
