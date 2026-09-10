@@ -40,6 +40,8 @@ test('duas caixas nos pés das camas, junto às extremidades superiores, mesmo s
 test('quarto mantém caixas simétricas mesmo quando só uma âncora de cama é lida', () => {
   const ambiente: AmbienteDetectado = {
     ...quarto(),
+    posX: 300,
+    posY: 200,
     limites: { minX: 100, minY: 100, maxX: 500, maxY: 300 },
     ancoras: [{ texto: 'cama', posX: 180, posY: 190, prioridade: 3 }],
     referencia: undefined,
@@ -47,7 +49,7 @@ test('quarto mantém caixas simétricas mesmo quando só uma âncora de cama é 
   const pontos = posicionar('caixa-embutir', 2, [ambiente]);
   assert.equal(pontos.length, 2);
   assert.equal(pontos[0].y, pontos[1].y);
-  assert.equal(pontos[0].x + pontos[1].x, ambiente.posX * 2);
+  assert.equal(pontos[0].x + pontos[1].x, 600);
   assert.ok(pontos[1].x - pontos[0].x > 40);
 });
 

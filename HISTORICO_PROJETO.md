@@ -106,5 +106,5 @@ O posicionamento final enviado pelo usuário é:
 
 ## Centralização do quarto e contato com a parede - 10/09/2026
 
-- O par de caixas do quarto usa o centro do rótulo/ambiente como referência para não ficar deslocado para um lado quando a zona rasterizada estiver assimétrica.
+- O par de caixas do quarto usa o centro geométrico da zona entre as paredes, e não o centro do rótulo textual, para não ficar deslocado quando o texto estiver assimétrico.
 - A rede agrupada é projetada para a linha arquitetônica da parede, compensando a folga da região detectada em células, sem perder a proteção de localização do cômodo.

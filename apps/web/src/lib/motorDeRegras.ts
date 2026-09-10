@@ -630,11 +630,7 @@ function ancorasDeRede(ambiente?: AmbienteDetectado): AncoraAmbiente[] {
     .sort((a, b) => b.prioridade - a.prioridade);
 }
 
-function posicoesFallbackDosPesDaCama(
-  regiao: LimitesPlanta | undefined,
-  quantidade: number,
-  centroPreferencialX?: number
-): { x: number; y: number }[] {
+function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantidade: number): { x: number; y: number }[] {
   if (!regiao) return [];
   const margem = Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
   const minX = regiao.minX + margem;
@@ -644,15 +640,7 @@ function posicoesFallbackDosPesDaCama(
   const largura = maxX - minX;
   const altura = maxY - minY;
   if (largura >= altura) {
-    const centro = centroPreferencialX === undefined
-      ? (minX + maxX) / 2
-      : Math.min(maxX, Math.max(minX, centroPreferencialX));
-    const colunas = quantidade === 2
-      ? [
-          Math.max(minX, centro - largura / 6),
-          Math.min(maxX, centro + largura / 6),
-        ]
-      : colunasDoQuarto(minX, largura, quantidade);
+    const colunas = colunasDoQuarto(minX, largura, quantidade);
     return colunas.map((x) => ({
       x,
       y: maxY,
@@ -794,7 +782,7 @@ export function calcularPosicoesDaSugestao(
     // Um unico texto de cama detectado de forma parcial nao e evidencia
     // suficiente para escolher um lado do quarto. A distribuicao geometrica
     // garante que as caixas dos quartos permaneçam simetricas.
-    const fallback = posicoesFallbackDosPesDaCama(zonaDoAmbiente, sugestao.quantidade, ambiente?.posX);
+    const fallback = posicoesFallbackDosPesDaCama(zonaDoAmbiente, sugestao.quantidade);
     if (fallback.length >= sugestao.quantidade) return fallback.slice(0, sugestao.quantidade);
     const fallbackSemRegiao = Array.from({ length: sugestao.quantidade }, (_, indice) => ({
       x: sugestao.posX + (indice % 2 === 0 ? -36 : 36),
