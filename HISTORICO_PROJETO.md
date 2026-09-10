@@ -94,7 +94,7 @@ O posicionamento final enviado pelo usuário é:
 - O fallback de rede agora usa diretamente a borda interna estimada da zona, sem margem adicional; o centro do marcador coincide com a parede.
 - Pares de caixas de som foram afastados para as posições de um quarto e três quartos do eixo útil, mantendo simetria e permanência dentro do cômodo.
 
-## Rede diretamente na parede - 10/09/2026
+## Rede alinhada sem sair do cômodo - 10/09/2026
 
-- Para pontos de rede sem móvel de apoio identificado, a zona do cômodo não recebe mais a margem inicial de segurança; a posição passa a usar a borda completa estimada da parede.
-- A margem continua preservada nas demais regras, evitando alterar a lógica de UniFi e áudio.
+- A tentativa de usar a borda completa da prancha foi revertida porque podia colocar o ponto fora do ambiente.
+- A rede agora mantém a zona local protegida pelo rótulo e pelos vizinhos, usando apenas um recuo mínimo de 8 px para aproximar o marcador da parede sem desalinhá-lo.

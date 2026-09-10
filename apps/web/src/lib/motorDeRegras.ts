@@ -537,7 +537,7 @@ function calcularZonaDoAmbiente(
   if (!regiao) return undefined;
 
   const margem = semMargemInicial
-    ? 0
+    ? Math.min(8, (regiao.maxX - regiao.minX) / 10, (regiao.maxY - regiao.minY) / 10)
     : Math.min(24, (regiao.maxX - regiao.minX) / 4, (regiao.maxY - regiao.minY) / 4);
   let minX = regiao.minX + margem;
   let minY = regiao.minY + margem;
@@ -574,25 +574,20 @@ function calcularZonaDoAmbiente(
     }
     return { minimo: inicio, maximo: fim };
   };
-  if (!semMargemInicial) {
-    const intervaloX = limitarIntervalo(minX, maxX, ambiente.posX, 480);
-    const intervaloY = limitarIntervalo(minY, maxY, ambiente.posY, 240);
-    minX = intervaloX.minimo;
-    maxX = intervaloX.maximo;
-    minY = intervaloY.minimo;
-    maxY = intervaloY.maximo;
-  }
+  const intervaloX = limitarIntervalo(minX, maxX, ambiente.posX, 480);
+  const intervaloY = limitarIntervalo(minY, maxY, ambiente.posY, 240);
+  minX = intervaloX.minimo;
+  maxX = intervaloX.maximo;
+  minY = intervaloY.minimo;
+  maxY = intervaloY.maximo;
 
-  // Para rede, a borda completa e a referencia desejada: nao a recortamos
-  // pela distancia do rotulo, pois o rotulo costuma ficar no centro e a
-  // parede pode estar mais distante. As demais regras continuam protegidas
-  // contra bordas de pagina ou carimbo muito afastadas.
-  if (!semMargemInicial) {
-    minX = Math.max(minX, ambiente.posX - 180);
-    maxX = Math.min(maxX, ambiente.posX + 180);
-    minY = Math.max(minY, ambiente.posY - 120);
-    maxY = Math.min(maxY, ambiente.posY + 120);
-  }
+  // Mesmo uma regiao local pode conter a borda da folha ou um carimbo. Nao
+  // permitimos que uma parede estimada fique muito distante do proprio rotulo
+  // quando o detector nao conseguiu separar as paredes internas.
+  minX = Math.max(minX, ambiente.posX - 180);
+  maxX = Math.min(maxX, ambiente.posX + 180);
+  minY = Math.max(minY, ambiente.posY - 120);
+  maxY = Math.min(maxY, ambiente.posY + 120);
 
   if (maxX - minX >= 72 && maxY - minY >= 72) return { minX, minY, maxX, maxY };
 
