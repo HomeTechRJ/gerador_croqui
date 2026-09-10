@@ -637,10 +637,19 @@ function posicoesFallbackDosPesDaCama(regiao: LimitesPlanta | undefined, quantid
   const largura = maxX - minX;
   const altura = maxY - minY;
   if (largura >= altura) {
-    return colunasDoQuarto(minX, largura, quantidade).map((x) => ({
+    const colunas = quantidade === 2
+      ? [minX + largura / 4, minX + (largura * 3) / 4]
+      : colunasDoQuarto(minX, largura, quantidade);
+    return colunas.map((x) => ({
       x,
       y: maxY,
     }));
+  }
+  if (quantidade === 2) {
+    return [
+      { x: maxX, y: minY + altura / 4 },
+      { x: maxX, y: minY + (altura * 3) / 4 },
+    ];
   }
   return Array.from({ length: quantidade }, (_, indice) => ({
     x: maxX,
@@ -660,10 +669,9 @@ function colunasDoQuarto(minX: number, largura: number, quantidade: number): num
  */
 function posicoesFallbackDeRede(regiao: LimitesPlanta | undefined, quantidade: number): { x: number; y: number }[] {
   if (!regiao || quantidade <= 0) return [];
-  // O centro do marcador deve coincidir com a parede. Uma pequena margem
-  // interna evita que o quadrado fique completamente para fora quando a
-  // borda foi estimada a partir do desenho rasterizado.
-  const margem = Math.min(8, (regiao.maxX - regiao.minX) / 10, (regiao.maxY - regiao.minY) / 10);
+  // O centro do marcador deve coincidir com a parede. A âncora do símbolo é
+  // centralizada pelo CSS, então não usamos margem interna neste fallback.
+  const margem = 0;
   const minX = regiao.minX + margem;
   const maxX = regiao.maxX - margem;
   const minY = regiao.minY + margem;
@@ -694,14 +702,14 @@ function posicoesSimetricasDeAudio(
   if (!vertical && largura >= altura) {
     const y = (minY + maxY) / 2;
     return [
-      { x: minX + largura / 3, y },
-      { x: minX + (largura * 2) / 3, y },
+      { x: minX + largura / 4, y },
+      { x: minX + (largura * 3) / 4, y },
     ];
   }
   const x = (minX + maxX) / 2;
   return [
-    { x, y: minY + altura / 3 },
-    { x, y: minY + (altura * 2) / 3 },
+    { x, y: minY + altura / 4 },
+    { x, y: minY + (altura * 3) / 4 },
   ];
 }
 

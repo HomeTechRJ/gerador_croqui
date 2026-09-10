@@ -88,3 +88,8 @@ O posicionamento final enviado pelo usuário é:
 - O cálculo de zona não pode usar a prancha inteira como fallback: áudio e rede permanecem em uma área local do cômodo identificado.
 - Duas caixas de som em quartos continuam simétricas; em varanda, sacada, terraço ou jardim, o par fica alinhado no eixo vertical.
 - A planta arquitetônica de Eveline e Bruno foi usada na validação visual dessas regras. Foram adicionados testes automatizados para a varanda e para o fallback de rede na parede.
+
+## Refinamento da parede e do espaçamento - 10/09/2026
+
+- O fallback de rede agora usa diretamente a borda interna estimada da zona, sem margem adicional; o centro do marcador coincide com a parede.
+- Pares de caixas de som foram afastados para as posições de um quarto e três quartos do eixo útil, mantendo simetria e permanência dentro do cômodo.
