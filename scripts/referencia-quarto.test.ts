@@ -49,7 +49,7 @@ test('quarto mantém caixas simétricas mesmo quando só uma âncora de cama é 
   const pontos = posicionar('caixa-embutir', 2, [ambiente]);
   assert.equal(pontos.length, 2);
   assert.equal(pontos[0].y, pontos[1].y);
-  assert.equal(pontos[0].x + pontos[1].x, 600);
+  assert.equal(pontos[0].x + pontos[1].x, ambiente.posX * 2);
   assert.ok(pontos[1].x - pontos[0].x > 40);
 });
 
